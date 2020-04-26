@@ -71,11 +71,92 @@ colnames(train)[14] <- "Surname"
 train <- cbind(train,sub('.*\\.', '', train$Name))
 colnames(train)[15] <- "OtherNames"
 
-#plot survival of large families
+#survival of families
 t5 <- table(train$Ticket,train$Survived)
-colnames(t5) <- c("Survived","Died")
+colnames(t5) <- c("Died","Survived")
 t5 <- cbind(t5,rowSums(t5))
 colnames(t5)[3]<-c("Total")
-length(which(t5[,2]==t5[,3]))/nrow(t5)
+prob <- round(((t5[,2]/t5[,3])*100),digits = 0)
+t5 <- cbind(t5,prob)
+colnames(t5)[4]<-c("percsurvive")
+fam_name <- rep(NA,681)
+t5 <- cbind(t5,fam_name)
 
-  
+ticket_class <- rep(NA,681)
+t5 <- cbind(t5,ticket_class)
+
+for ( i in 1:nrow(t5)) {
+    if(all(as.character(train[train$Ticket==rownames(t5)[i],]$Surname[1])==as.character(train[train$Ticket==rownames(t5)[i],]$Surname))){
+        t5[i,5] <- as.character(train[train$Ticket==rownames(t5)[i],]$Surname[1])
+    }
+    t5[i,6] <- train[train$Ticket==rownames(t5)[i],]$Pclass[1]
+}
+families <- as.data.frame(t5)
+View(families)
+families[!is.na(families$fam_name) & as.numeric(families$Total)>2 & families$ticket_class==1,]
+
+#Lasso regression on logistic regression to choose param's
+library(glmnet)
+#scale some columns
+train$Fare <- as.numeric(scale(train$Fare))
+
+#deal with missing age values
+  # -> is there a pattern in missing values. There are 177/891 missing age values
+  # -> regress age onto Survived, Pclass, SibSp, Title
+  # -> train: Non-NA,   test: NA
+
+age.test <- train[which(is.na(train$Age)),]
+age.train <- train[which(!is.na(train$Age)),]
+
+#replace age with nonscaled age
+
+View(age.train)
+lm.age <- lm(Age~Survived+Pclass+SibSp+Title,data = age.train)
+plot(lm.age)
+#Observations from lm.age: residuals-vs-fitted => heteroskedasticity, 
+#residuals -vs- leverage => NO outliers/high leverage points.
+
+#Test for heteroskedasticity:
+library(lmtest)
+bptest(lm.age)
+#BP = 30.562, df = 6, p-value = 3.072e-05
+
+#transform dependent variable
+lm.age2 <- lm(sqrt(Age)~Survived+Pclass+SibSp+Title,data = age.train)
+plot(lm.age2)
+#Observations from lm.age2: residuals-vs-fitted => much less heteroskedasticity
+  #however nonlinearity may exist. Solution: Add higher order terms for Pclass and/or SipSp?
+    #chosen model below
+lm.age5 <- lm(sqrt(Age)~Survived+poly(Pclass,2)+poly(SibSp,2)+Title,data = age.train)
+summary(lm.age5)
+plot(lm.age5)
+#Still not happy with above model because the BP test still "detects" heteroskedasticity
+#need to look into WLS and/or GLS
+
+#predictions for test set (i.e. NA values)
+pred <- predict(lm.age5,train[which(is.na(train$Age)),])
+pred <- round(pred^2,0)
+train[is.na(train$Age),]$Age <- pred
+
+#training error
+pred.train <- predict(lm.age5)
+pred.t <- round(pred.train^2,1)
+sse <- sum((as.numeric(pred.t)-as.numeric(age.train$Age))^2)
+mse<-sse/(nrow(age.train)-7)
+#Scale the age variable now
+train$Age <- as.numeric(scale(train$Age))
+summary(train2[is.na(train2$Age),])
+
+nrow(age.test[age.test$Survived==0,])/nrow(age.test) #0.7062147
+nrow(train[train$Survived==0,])/nrow(train) #0.6161616
+
+nrow(age.test[age.test$Pclass==1,])/nrow(age.test)#0.1694915
+nrow(train[train$Pclass==1,])/nrow(train)#0.2424242
+
+nrow(age.test[age.test$Pclass==2,])/nrow(age.test)#0.06214689
+nrow(train[train$Pclass==2,])/nrow(train)#0.2065095
+
+nrow(age.test[age.test$Pclass==3,])/nrow(age.test)#0.7683616
+nrow(train[train$Pclass==3,])/nrow(train)#0.5510662
+boxplot(train2[train2$Pclass==3,]$Age)
+
