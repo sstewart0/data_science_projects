@@ -230,5 +230,22 @@ train[is.na(train$Age)&train$Pclass==2,]$Age <- round(na.pred2,1)
 train[is.na(train$Age)&train$Pclass==3,]$Age <- round(na.pred3,1)
 View(train)
 
+#PCA
+library(ggfortify)
+train$Age <- scale(train$Age)
+pca <- prcomp(dplyr::select_if(train[,-c(1,2,3,16)], is.numeric))
+pca #72% of variation in data explained by pca1,pca2.
+summary(pca)
+autoplot(pca,data=train,colour='Survived',loadings=T,loadings.label=T)
 
+#correlation between PC_k and X_j? = (lambda_k . v_jk)/sd(X_j)
+cor.pc1.age <- (pca$sdev[1]*pca$rotation[1,1])/sd(train$Age)#0.6219
+cor.pc1.SibSp <- (pca$sdev[1]*pca$rotation[2,1])/sd(train$SibSp)#-0.8942
+cor.pc1.Parch <- (pca$sdev[1]*pca$rotation[3,1])/sd(train$Parch)#-0.6218
+cor.pc1.Fare <- (pca$sdev[1]*pca$rotation[4,1])/sd(train$Fare)#-0.2863
+
+cor.pc2.age <- (pca$sdev[2]*pca$rotation[1,2])/sd(train$Age)#0.5566
+cor.pc2.SibSp <- (pca$sdev[2]*pca$rotation[2,2])/sd(train$SibSp)#0.0219
+cor.pc2.Parch <- (pca$sdev[2]*pca$rotation[3,2])/sd(train$Parch)#0.1773
+cor.pc2.Fare <- (pca$sdev[2]*pca$rotation[4,2])/sd(train$Fare)#0.8756
 
