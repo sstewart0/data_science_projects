@@ -100,46 +100,6 @@ library(glmnet)
 #scale some columns
 train$Fare <- as.numeric(scale(train$Fare))
 
-#deal with missing age values
-  # -> is there a pattern in missing values. There are 177/891 missing age values
-  # -> regress age onto Survived, Pclass, SibSp, Title
-  # -> train: Non-NA,   test: NA
-age.test <- train[which(is.na(train$Age)),]
-age.train <- train[which(!is.na(train$Age)),]
-View(age.train)
-#replace age with nonscaled age
-
-View(age.train)
-lm.age <- lm(Age~Survived+Pclass+SibSp+Title,data = age.train)
-plot(lm.age)
-#Observations from lm.age: residuals-vs-fitted => heteroskedasticity, 
-#residuals -vs- leverage => NO outliers/high leverage points.
-
-#Test for heteroskedasticity:
-library(lmtest)
-bptest(lm.age)
-#BP = 30.562, df = 6, p-value = 3.072e-05
-
-#transform dependent variable
-lm.age2 <- lm(sqrt(Age)~Survived+Pclass+SibSp+Title,data = age.train)
-plot(lm.age2)
-#Observations from lm.age2: residuals-vs-fitted => much less heteroskedasticity
-#need to look into WLS and/or GLS
-
-#predictions for test set (i.e. NA values)
-pred <- predict(lm.age5,train[which(is.na(train$Age)),])
-pred <- round(pred^2,0)
-train[is.na(train$Age),]$Age <- pred
-
-#training error
-pred.train <- predict(lm.age2)
-pred.t <- round(pred.train^2,1)
-sse <- sum((as.numeric(pred.t)-as.numeric(age.train$Age))^2)
-mse1<-sse/(nrow(age.train)-7)
-
-#Scale the age variable now
-train$Age <- as.numeric(scale(train$Age))
-
 #Age -vs- survival and Age -vs- Pclass
 library(ggplot2)
 ggplot(data=train2, aes(x=Age, group=Pclass, fill=Pclass)) +
@@ -147,28 +107,6 @@ ggplot(data=train2, aes(x=Age, group=Pclass, fill=Pclass)) +
 #Age follows normal distribution in each class however each have different mean,sd.
 #it appears that ages from pclass 2,3 could be drawn from the same (normal) distribution
 #So; fit models separately to predict Age for each class and assess training error.
-
-  #pclass==1
-age.pclass1 <- lm(Age~Survived+Title+Parch,data = age.train[age.train$Pclass==1,])
-summary(age.pclass1)
-plot(age.pclass1)#heteroskedasticity possibly present
-bptest(age.pclass1)#BP = 8.0288, df = 5, p-value = 0.1547 => cannot reject H_0:homoskedasticity
-#assess training error
-p1<-predict(age.pclass1)
-mse1 <- (sum((as.numeric(p1)-as.numeric(age.train[age.train$Pclass==1,]$Age))^2))/(nrow(age.train)-6)#44.188
-
-  #pclass==2,3
-age.pclass23 <- lm(Age~Survived+Title+SibSp+Embarked,data = age.train[age.train$Pclass!=1,])
-summary(age.pclass23)
-plot(age.pclass23)#some funneling, no non-linearity
-bptest(age.pclass2)#BP = 11.947, df = 6, p-value = 0.06317 => cannot reject H_0:homoskedasticity at alpha=0.05
-#assess training error
-p23<-predict(age.pclass23)
-summary(p23)
-mse23 <- (sum((as.numeric(p23)-as.numeric(age.train[age.train$Pclass!=1,]$Age))^2))/(nrow(age.train)-8)
-
-#y ~ ... ; mse = 79.25 #negative ages present!!
-#sqrt(y) ~ ... ; mse = 80.33
 
 #pclass==2
 age.pclass2 <- lm(Age~Title+SibSp+Embarked,data = age.train[age.train$Pclass==2,])
@@ -180,50 +118,34 @@ p2<-predict(age.pclass2)
 summary(p2)
 mse2 <- (sum((as.numeric(p2)-as.numeric(age.train[age.train$Pclass==2,]$Age))^2))/(nrow(age.train)-7)#30.25
 
-
-#pclass==3
-age.pclass3 <- lm(sqrt(Age)~Title+SibSp+Embarked+Survived,data = age.train[age.train$Pclass==3,])
-summary(age.pclass3)
-plot(age.pclass3)#very little/no funneling, possible non-linearity
-bptest(age.pclass3)
-
-#BP = 15.117, df = 7, p-value = 0.03453 => reject H_0
-#try sqrt(y): BP = 12.338, df = 7, p-value = 0.08998 => do not reject H_0. better model, no more negative ages
-
-#assess training error
-p3<-predict(age.pclass3)^2
-summary(p3)
-mse3 <- (sum((as.numeric(p3)-as.numeric(age.train[age.train$Pclass==3,]$Age))^2))/(nrow(age.train)-8)#45.51
-
-#average mse:
-(mse1+mse2+mse3)/3 #39.99 much better result than fitting together but still not happy; 
-
-#add cabin Y/N and refit?
+#add cabin Y/N
 cab<-rep(c(1),891)
 train<-cbind(train,cab)
 train[train$Cabin=="",]$cab<-c(0)
-train$Age<-train2$Age
-age.train <- train[which(!is.na(train$Age)),]
+
+train$cab <- as.factor(train$cab)
+train$Embarked <- as.factor(train$Embarked)
+train$Title <- as.factor(train$Title)
+
+#deal with missing age values
+# -> is there a pattern in missing values. There are 177/891 missing age values
+# -> regress age onto Survived, Pclass, SibSp, Title
+# -> train: Non-NA,   test: NA
 age.test <- train[which(is.na(train$Age)),]
-
-#pclass==3
-new.age.pclass3 <- lm(sqrt(Age)~Title+SibSp+Embarked+Survived+Survived+cab,data = age.train[age.train$Pclass==3,])
-summary(new.age.pclass3)
-View(new.age.pclass3$fitted.values^2)
-plot(new.age.pclass3)#looks ok?
-bptest(new.age.pclass3)#BP = 15.926, df = 8, p-value = 0.04345, add sqrt! BP = 9.8806, df = 8, p-value = 0.2735 => uh huh eskeetit
-#transformed model has MSE = (0.956)^2 !!!
-
-
-#predict NA ages:
-na.pred1<-predict(age.pclass1,age.test[age.test$Pclass==1,])
-na.pred2<-predict(age.pclass2,age.test[age.test$Pclass==2,])
-#need to correct for E[y] since we took sqrt
-na.pred3<-(predict(new.age.pclass3,age.test[age.test$Pclass==3,]))^2+sigma(new.age.pclass3)^2
-
-#happy with ages from pclass 1 but not 2 or 3. H_0: underage
-View(train[which(!is.na(train$Age)&train$Pclass!=1),])
-train$Age<-train2$Age
+age.train <- train[which(!is.na(train$Age)),]
+#Better approach would be to use decision tree to predict Ages? -> No
+#Lasso for age
+set.seed(1)
+colnames(age.train)
+x <- model.matrix( ~ .-1, age.train[,c(3,5,7,8,10,12,13,16)])
+age.fit <- glmnet(x,age.train$Age,family = "gaussian", alpha = 1)
+plot(age.fit, label = TRUE)
+cvfit.age = cv.glmnet(x, age.train$Age, family = "gaussian")
+plot(cvfit.age)
+coef(cvfit.age,s="lambda.1se")
+pred.age <- predict(cvfit.age,newx=x,s="lambda.1se")
+mse<-sum((pred.age-age.train$Age)^2)/(nrow(age.train)-9)
+sqrt(mse)#11.6 is very high, maybe accept mean/median age of class?
 
 train[is.na(train$Age)&train$Pclass==1,]$Age <- round(na.pred1,1)
 train[is.na(train$Age)&train$Pclass==2,]$Age <- round(na.pred2,1)
@@ -248,4 +170,72 @@ cor.pc2.age <- (pca$sdev[2]*pca$rotation[1,2])/sd(train$Age)#0.5566
 cor.pc2.SibSp <- (pca$sdev[2]*pca$rotation[2,2])/sd(train$SibSp)#0.0219
 cor.pc2.Parch <- (pca$sdev[2]*pca$rotation[3,2])/sd(train$Parch)#0.1773
 cor.pc2.Fare <- (pca$sdev[2]*pca$rotation[4,2])/sd(train$Fare)#0.8756
+
+#clustering
+#k-means
+set.seed(1)
+k.clus <- kmeans(dplyr::select_if(train[,-c(1)], is.numeric),2,nstart = 20)
+k.clus$centers
+
+#treat class,survived,cab as catagorical
+train$Survived<-as.factor(train$Survived)
+train$Pclass<-as.factor(train$Pclass)
+train$cab<-as.factor(train$cab)
+
+#logistic regression
+library(boot)
+set.seed(1)
+surv.glm <- glm(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+Title+cab,data=train,family = binomial)
+summary(surv.glm)
+glm.probs <- predict(surv.glm,type = "response")
+glm.pred <- ifelse(glm.probs > 0.5, "1", "0")
+length(which(glm.pred!=train$Survived))
+
+#penalised logistic regression using lasso -> model selection
+  #glmnet cannot handle factors directly we must create dummy variables using model.matrix
+library(glmnet)
+set.seed(1)
+x <- model.matrix( ~ .-1, train[,c(3,5,6,7,8,10,12,13,16)])
+fit <- glmnet(x,train$Survived,family = "binomial", alpha = 1)
+plot(fit, xvar = "dev", label = TRUE)
+cvfit = cv.glmnet(x, train$Survived, family = "binomial", type.measure = "class")
+plot(cvfit)
+#choose lambda which gives the most regularized model such that error 
+#is within one standard error of the minimum
+cvfit$lambda.1se
+coef(cvfit, s = "lambda.1se")
+#has removed Fare,Pclass2,EmbarkedQ,TitleMiss
+pred.glm <- predict(cvfit, newx = x,type = "class", s = "lambda.1se")
+length(which(pred.glm!=train$Survived))
+149/891 #16.72278% training misclassification error rate.
+err_1st <- nrow(train[train$Survived!=pred.glm &train$Pclass==1,])/nrow(train[train$Pclass==1,])
+err_2nd <- nrow(train[train$Survived!=pred.glm &train$Pclass==2,])/nrow(train[train$Pclass==2,])
+err_3rd <- nrow(train[train$Survived!=pred.glm &train$Pclass==3,])/nrow(train[train$Pclass==3,])
+
+
+#Add relevant columns to test set
+  #Name -> ["Mr,Mrs,..." , "Surname" , "Other names"]
+titles_test <- rep(factor(c("Mr")),nrow(test))
+test <- cbind(test,titles_test)
+colnames(test)[12] <- "Title"
+test$Title <- as.character(test$Title)
+for (i in 1:nrow(test)){
+  if (grepl("Master",test$Name[i])==T){
+    test$Title[i]<-"Master"
+  }
+  else if (grepl("Miss",test$Name[i])==T){
+    test$Title[i]<-"Miss"
+  }
+  else if (grepl("Mrs",test$Name[i])==T){
+    test$Title[i]<-"Mrs"
+  }
+}
+#Add cabin Y or N ->
+cab_test<-rep(c(1),nrow(test))
+test<-cbind(test,cab_test)
+colnames(test)[13]<-"cab"
+test[test$Cabin=="",]$cab<-c(0)
+View(test)
+
+#Age predictions -> previous LM used survived !!
 
