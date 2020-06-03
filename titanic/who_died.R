@@ -131,26 +131,22 @@ train$Title <- as.factor(train$Title)
 # -> is there a pattern in missing values. There are 177/891 missing age values
 # -> regress age onto Survived, Pclass, SibSp, Title
 # -> train: Non-NA,   test: NA
+
 age.test <- train[which(is.na(train$Age)),]
 age.train <- train[which(!is.na(train$Age)),]
-#Better approach would be to use decision tree to predict Ages? -> No
-#Lasso for age
-set.seed(1)
-colnames(age.train)
-x <- model.matrix( ~ .-1, age.train[,c(3,5,7,8,10,12,13,16)])
-age.fit <- glmnet(x,age.train$Age,family = "gaussian", alpha = 1)
-plot(age.fit, label = TRUE)
-cvfit.age = cv.glmnet(x, age.train$Age, family = "gaussian")
-plot(cvfit.age)
-coef(cvfit.age,s="lambda.1se")
-pred.age <- predict(cvfit.age,newx=x,s="lambda.1se")
-mse<-sum((pred.age-age.train$Age)^2)/(nrow(age.train)-9)
-sqrt(mse)#11.6 is very high, maybe accept mean/median age of class?
 
-train[is.na(train$Age)&train$Pclass==1,]$Age <- round(na.pred1,1)
-train[is.na(train$Age)&train$Pclass==2,]$Age <- round(na.pred2,1)
-train[is.na(train$Age)&train$Pclass==3,]$Age <- round(na.pred3,1)
-View(train)
+#Predict Ages
+library(tidyverse)
+library(caret)
+set.seed(123)
+train.control <- trainControl(method = "cv", number = 10)
+lasso_model <- train(log(Age) ~Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+cab, data = age.train, method = "lasso",
+                     trControl = train.control)
+mse<-(getTrainPerf(lasso_model)$TrainRMSE)^2
+print(lasso_model)
+na.pred <- predict(lasso_model,newdata = age.test)
+na.pred<-exp(na.pred)*exp(mse)
+train[is.na(train$Age),]$Age <- round(na.pred,1)
 
 #PCA
 library(ggfortify)
@@ -181,15 +177,6 @@ k.clus$centers
 train$Survived<-as.factor(train$Survived)
 train$Pclass<-as.factor(train$Pclass)
 train$cab<-as.factor(train$cab)
-
-#logistic regression
-library(boot)
-set.seed(1)
-surv.glm <- glm(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+Title+cab,data=train,family = binomial)
-summary(surv.glm)
-glm.probs <- predict(surv.glm,type = "response")
-glm.pred <- ifelse(glm.probs > 0.5, "1", "0")
-length(which(glm.pred!=train$Survived))
 
 #penalised logistic regression using lasso -> model selection
   #glmnet cannot handle factors directly we must create dummy variables using model.matrix
@@ -235,7 +222,19 @@ cab_test<-rep(c(1),nrow(test))
 test<-cbind(test,cab_test)
 colnames(test)[13]<-"cab"
 test[test$Cabin=="",]$cab<-c(0)
-View(test)
 
-#Age predictions -> previous LM used survived !!
+#Standardise Fare
+test$Fare<-as.numeric(scale(test$Fare))
 
+#Change variable to factor
+test$Pclass<-as.factor(test$Pclass)
+test$cab<-as.factor(test$cab)
+
+#Age as numeric
+test$Age<-as.numeric(test$Age)
+
+#Add Ages
+ta <- predict(lasso_model,newdata = test[is.na(test$Age),])
+ta<-exp(ta)*exp(mse)
+plot(ta)
+test[is.na(test$Age),]<-round(ta,1)
