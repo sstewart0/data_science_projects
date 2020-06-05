@@ -95,11 +95,6 @@ families <- as.data.frame(t5)
 View(families)
 families[!is.na(families$fam_name) & as.numeric(families$Total)>2 & families$ticket_class==1,]
 
-#Lasso regression on logistic regression to choose param's
-library(glmnet)
-#scale some columns
-train$Fare <- as.numeric(scale(train$Fare))
-
 #Age -vs- survival and Age -vs- Pclass
 library(ggplot2)
 ggplot(data=train2, aes(x=Age, group=Pclass, fill=Pclass)) +
@@ -126,27 +121,6 @@ train[train$Cabin=="",]$cab<-c(0)
 train$cab <- as.factor(train$cab)
 train$Embarked <- as.factor(train$Embarked)
 train$Title <- as.factor(train$Title)
-
-#deal with missing age values
-# -> is there a pattern in missing values. There are 177/891 missing age values
-# -> regress age onto Survived, Pclass, SibSp, Title
-# -> train: Non-NA,   test: NA
-
-age.test <- train[which(is.na(train$Age)),]
-age.train <- train[which(!is.na(train$Age)),]
-
-#Predict Ages
-library(tidyverse)
-library(caret)
-set.seed(123)
-train.control <- trainControl(method = "cv", number = 10)
-lasso_model <- train(log(Age) ~Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+cab, data = age.train, method = "lasso",
-                     trControl = train.control)
-mse<-(getTrainPerf(lasso_model)$TrainRMSE)^2
-print(lasso_model)
-na.pred <- predict(lasso_model,newdata = age.test)
-na.pred<-exp(na.pred)*exp(mse)
-train[is.na(train$Age),]$Age <- round(na.pred,1)
 
 #PCA
 library(ggfortify)
@@ -178,28 +152,6 @@ train$Survived<-as.factor(train$Survived)
 train$Pclass<-as.factor(train$Pclass)
 train$cab<-as.factor(train$cab)
 
-#penalised logistic regression using lasso -> model selection
-  #glmnet cannot handle factors directly we must create dummy variables using model.matrix
-library(glmnet)
-set.seed(1)
-x <- model.matrix( ~ .-1, train[,c(3,5,6,7,8,10,12,13,16)])
-fit <- glmnet(x,train$Survived,family = "binomial", alpha = 1)
-plot(fit, xvar = "dev", label = TRUE)
-cvfit = cv.glmnet(x, train$Survived, family = "binomial", type.measure = "class")
-plot(cvfit)
-#choose lambda which gives the most regularized model such that error 
-#is within one standard error of the minimum
-cvfit$lambda.1se
-coef(cvfit, s = "lambda.1se")
-#has removed Fare,Pclass2,EmbarkedQ,TitleMiss
-pred.glm <- predict(cvfit, newx = x,type = "class", s = "lambda.1se")
-length(which(pred.glm!=train$Survived))
-149/891 #16.72278% training misclassification error rate.
-err_1st <- nrow(train[train$Survived!=pred.glm &train$Pclass==1,])/nrow(train[train$Pclass==1,])
-err_2nd <- nrow(train[train$Survived!=pred.glm &train$Pclass==2,])/nrow(train[train$Pclass==2,])
-err_3rd <- nrow(train[train$Survived!=pred.glm &train$Pclass==3,])/nrow(train[train$Pclass==3,])
-
-
 #Add relevant columns to test set
   #Name -> ["Mr,Mrs,..." , "Surname" , "Other names"]
 titles_test <- rep(factor(c("Mr")),nrow(test))
@@ -217,14 +169,13 @@ for (i in 1:nrow(test)){
     test$Title[i]<-"Mrs"
   }
 }
+test$Title<-as.factor(test$Title)
+
 #Add cabin Y or N ->
 cab_test<-rep(c(1),nrow(test))
 test<-cbind(test,cab_test)
 colnames(test)[13]<-"cab"
 test[test$Cabin=="",]$cab<-c(0)
-
-#Standardise Fare
-test$Fare<-as.numeric(scale(test$Fare))
 
 #Change variable to factor
 test$Pclass<-as.factor(test$Pclass)
@@ -233,8 +184,90 @@ test$cab<-as.factor(test$cab)
 #Age as numeric
 test$Age<-as.numeric(test$Age)
 
-#Add Ages
-ta <- predict(lasso_model,newdata = test[is.na(test$Age),])
-ta<-exp(ta)*exp(mse)
-plot(ta)
-test[is.na(test$Age),]<-round(ta,1)
+#Add survived
+Survived<-rep(0,418)
+library(tibble)
+test<-add_column(test, Survived, .after = "PassengerId")
+
+#deal with missing age values
+age.test <- train[which(is.na(train$Age)),]
+age.train <- train[which(!is.na(train$Age)),]
+
+age.train <- rbind(age.train,test[which(!is.na(test$Age)),])
+age.test<- rbind(age.test,test[which(is.na(test$Age)),])
+
+apply(is.na(age.train),2,which)#1531,836
+age.train<-age.train[-c(836,1531),]
+
+library(tidyverse)
+library(caret)
+set.seed(123)
+train.control <- trainControl(method = "cv", number = 10)
+lasso_model <- train(log(Age) ~ Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+cab, data = age.train, method = "lasso",
+                     trControl = train.control)
+ages<-predict(lasso_model)
+ages<-exp(ages)*exp(lasso_model$finalModel$sigma2^2)
+r<-(age.train$Age-ages)
+
+#log-linear model => less funneling however slight non-linear trend in residual-vs-response
+plot(ages, r, ylab = "residual")+abline(0,0,col="red")
+mse.ages<-sum((ages-age.train$Age)^2)/length(ages)
+
+#Predicted ages -> data
+age_test<-test[is.na(test$Age),]
+age_train<-train[is.na(train$Age),]
+
+#missing test ages
+new_ages_test<-predict(lasso_model,newdata=age_test)
+new_ages_test<-exp(new_ages_test)*exp(lasso_model$finalModel$sigma2^2)
+
+#missing train ages
+new_ages_train<-predict(lasso_model,newdata=age_train)
+new_ages_train<-exp(new_ages_train)*exp(lasso_model$finalModel$sigma2^2)
+
+#insert ages into respective datasets
+train[is.na(train$Age),]$Age<-round(new_ages_train,1)
+test[is.na(test$Age),]$Age<-round(new_ages_test,1)
+
+apply(is.na(test),2,which)
+apply(is.na(train),2,which)
+
+#penalised logistic regression using lasso -> model selection
+#glmnet cannot handle factors directly we must create dummy variables using model.matrix
+library(glmnet)
+set.seed(1)
+train$Pclass<-as.factor(train$Pclass)
+train[train$Embarked=="",]#62,830
+train<-train[-c(62,830),]
+train$Embarked<-as.factor(train$Embarked)
+x <- model.matrix( ~ .-1, train[,c(3,5,6,7,8,10,12,13,14)])
+fit <- glmnet(x,train$Survived,family = "binomial", alpha = 1)
+plot(fit, xvar = "dev", label = TRUE)
+cvfit = cv.glmnet(x, train$Survived, family = "binomial", type.measure = "class")
+coef(cvfit, s = "lambda.min")
+#has removed EmbarkedQ,Pclass2
+pred.glm <- predict(cvfit, newx = x,type = "class", s = "lambda.min")
+
+err_1st <- nrow(train[train$Survived!=pred.glm &train$Pclass==1,])/nrow(train[train$Pclass==1,])
+err_2nd <- nrow(train[train$Survived!=pred.glm &train$Pclass==2,])/nrow(train[train$Pclass==2,])
+err_3rd <- nrow(train[train$Survived!=pred.glm &train$Pclass==3,])/nrow(train[train$Pclass==3,])
+
+#Test[153,]$Fare missing
+E_Fare<-(sum(train[train$Pclass==3,]$Fare)+sum(test[test$Pclass==3 &!is.na(test$Fare),]$Fare))/
+  (nrow(train[train$Pclass==3,])+nrow(test[test$Pclass==3 &!is.na(test$Fare),]))
+test[153,]$Fare<-round(E_Fare,2)
+
+#Make survived predictions:
+set.seed(1)
+x2 <- model.matrix( ~ .-1, test[,c(3,5,6,7,8,10,12,13,14)])
+pred.surv <- predict(cvfit, newx = x2,type = "class", s = "lambda.min")
+test$Survived<-pred.surv
+summary(test$Survived)
+
+#Output predictions
+my_pred<-cbind(test$PassengerId,test$Survived)
+colnames(my_pred)[1]<-"PassengerId"
+colnames(my_pred)[2]<-"Survived"
+write.csv(my_pred,'my-predictions.csv',row.names = F)
+
+
