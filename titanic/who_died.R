@@ -209,6 +209,40 @@ ages<-predict(lasso_model)
 ages<-exp(ages)*exp(lasso_model$finalModel$sigma2^2)
 r<-(age.train$Age-ages)
 
+#LS
+ls_model <- train(Age ~ Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+cab, data = age.train, method = "lm",
+                  trControl = train.control)
+print(ls_model)
+
+#PLS
+pls_model <- train(Age ~ Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+cab, data = age.train, method = "pls",
+                   trControl = train.control)
+print(pls_model)
+
+#Ridge
+ridge_model <- train(Age ~ Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+cab, data = age.train, method = "ridge",
+                     trControl = train.control)
+print(ridge_model)
+
+#Lasso
+lasso_model <- train(Age ~ Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+cab, data = age.train, method = "lasso",
+                     trControl = train.control)
+print(lasso_model)
+
+#PCR
+pcr_model <- train(Age ~ Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+cab, data = age.train, method = "pcr",
+                   trControl = train.control)
+print(pcr_model)
+
+#KNN
+knn_model <- train(Age ~ Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+cab, data = age.train, method = "knn",
+                   trControl = train.control)
+print(pcr_model)
+
+#Compare RMSE of models
+results <- resamples(list(LS=ls_model,RIDGE=ridge_model,LASSO=lasso_model,PCR=pcr_model,PLS=pls_model,KNN=knn_model))
+bwplot(results,metric="RMSE")
+
 #log-linear model => less funneling however slight non-linear trend in residual-vs-response
 plot(ages, r, ylab = "residual")+abline(0,0,col="red")
 mse.ages<-sum((ages-age.train$Age)^2)/length(ages)
@@ -245,6 +279,7 @@ fit <- glmnet(x,train$Survived,family = "binomial", alpha = 1)
 plot(fit, xvar = "dev", label = TRUE)
 cvfit = cv.glmnet(x, train$Survived, family = "binomial", type.measure = "class")
 coef(cvfit, s = "lambda.min")
+
 #has removed EmbarkedQ,Pclass2
 pred.glm <- predict(cvfit, newx = x,type = "class", s = "lambda.min")
 
