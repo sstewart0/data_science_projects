@@ -95,24 +95,6 @@ families <- as.data.frame(t5)
 View(families)
 families[!is.na(families$fam_name) & as.numeric(families$Total)>2 & families$ticket_class==1,]
 
-#Age -vs- survival and Age -vs- Pclass
-library(ggplot2)
-ggplot(data=train2, aes(x=Age, group=Pclass, fill=Pclass)) +
-  geom_density(adjust=1.5, alpha=.4)
-#Age follows normal distribution in each class however each have different mean,sd.
-#it appears that ages from pclass 2,3 could be drawn from the same (normal) distribution
-#So; fit models separately to predict Age for each class and assess training error.
-
-#pclass==2
-age.pclass2 <- lm(Age~Title+SibSp+Embarked,data = age.train[age.train$Pclass==2,])
-summary(age.pclass2)
-plot(age.pclass2)#funneling, some non-linearity
-bptest(age.pclass2)#BP = 11.947, df = 6, p-value = 0.06317 => cannot reject H_0:homoskedasticity at alpha=0.05
-#assess training error
-p2<-predict(age.pclass2)
-summary(p2)
-mse2 <- (sum((as.numeric(p2)-as.numeric(age.train[age.train$Pclass==2,]$Age))^2))/(nrow(age.train)-7)#30.25
-
 #add cabin Y/N
 cab<-rep(c(1),891)
 train<-cbind(train,cab)
@@ -199,15 +181,16 @@ age.test<- rbind(age.test,test[which(is.na(test$Age)),])
 apply(is.na(age.train),2,which)#1531,836
 age.train<-age.train[-c(836,1531),]
 
-library(tidyverse)
-library(caret)
-set.seed(123)
-train.control <- trainControl(method = "cv", number = 10)
-lasso_model <- train(log(Age) ~ Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+cab, data = age.train, method = "lasso",
-                     trControl = train.control)
-ages<-predict(lasso_model)
-ages<-exp(ages)*exp(lasso_model$finalModel$sigma2^2)
-r<-(age.train$Age-ages)
+age.train[age.train$Embarked=="",]#62,830
+age.train<-age.train[-c(62,830),]
+
+#Age -vs- cab and Age -vs- Pclass
+library(ggplot2)
+ggplot(data=age.train, aes(x=Age, group=Pclass, fill=Pclass)) +
+  geom_density(adjust=1.5, alpha=.4)
+
+ggplot(data=age.train, aes(x=Age, group=cab, fill=cab)) +
+  geom_density(adjust=1.5, alpha=.4)
 
 #LS
 ls_model <- train(Age ~ Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+cab, data = age.train, method = "lm",
