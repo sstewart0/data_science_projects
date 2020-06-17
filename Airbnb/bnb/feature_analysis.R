@@ -107,8 +107,6 @@ library(hexbin)
 library(ggmap)
 
 summary(bnb_data)
-register_google(key = "AIzaSyBgH-rOIAQT9yaFVfzz9igp2H7VanEMWpc")
-ggmap_show_api_key()
 
 #Create stamen map
 height <- max(bnb_data$latitude) - min(bnb_data$latitude)
