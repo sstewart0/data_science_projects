@@ -38,27 +38,15 @@ ggplot(bnb_data,aes(x=neighbourhood_group,fill=room_type))+geom_bar(position = p
   scale_fill_brewer(palette="Paired")+theme_minimal()+xlab("Area")+
   scale_x_discrete(limits=c("Manhattan","Brooklyn","Queens","Bronx","Staten Island"))
 
-#Price range for each area -> outliers removed
+#Price range for each area 
 ggplot(bnb_data,aes(x=neighbourhood_group,y=price,fill=neighbourhood_group))+
-  geom_boxplot(outlier.shape = NA)+ylim(c(0,400))+theme(legend.position= "none")+
+  geom_violin()+ylim(c(0,600))+theme(legend.position= "none")+
   scale_x_discrete(limits=c("Manhattan","Brooklyn","Queens","Staten Island","Bronx"))
 
-#Minimum nights density plot for each area
-
-#Manhattan -> 284 rows > 35 min nights
-ggplot(bnb_data[neighbourhood_group=='Manhattan',],aes(x=minimum_nights))+
-  geom_density()+xlim(c(0,35))+labs(title="Manhattan")
-#Bronx -> 13 rows > 35 min nights
-ggplot(bnb_data[neighbourhood_group=='Bronx',],aes(x=minimum_nights))+
-  geom_density()+xlim(c(0,35))+labs(title="Bronx")
-#Brooklyn -> 183 rows > 35 min nights
-ggplot(bnb_data[neighbourhood_group=='Brooklyn',],aes(x=minimum_nights))+
-  geom_density()+xlim(c(0,35))+labs(title="Brooklyn")
-#Queens -> 40 rows > 35 min nights
-ggplot(bnb_data[neighbourhood_group=='Queens',],aes(x=minimum_nights))+
-  geom_density()+xlim(c(0,35))+labs(title="Queens")
-
-ggplot(bnb_data,aes(x=number_of_reviews))+stat_ecdf()+xlim(c(0,300))
+#Minimum nights for each area
+ggplot(bnb_data,aes(x=neighbourhood_group,y=minimum_nights,fill=neighbourhood_group))+
+  geom_violin()+theme(legend.position= "none")+ylim(c(0,35))+
+  scale_x_discrete(limits=c("Manhattan","Brooklyn","Queens","Staten Island","Bronx"))
 
 #split reviews into categories
 num_reviews<-rep(NA,48895)
@@ -74,26 +62,26 @@ bnb_data[number_of_reviews>200,]$num_reviews <- c("X>200")
 bnb_data$num_reviews=as.factor(bnb_data$num_reviews)
 nrow(bnb_data[is.na(bnb_data$num_reviews),])
 
+#Plot number of reviews
 ggplot(bnb_data,aes(x=num_reviews,fill=num_reviews))+geom_bar()+theme_minimal()+
   theme(legend.position = "none")+labs(x="Number of Reviews (X)")+
   scale_x_discrete(limits=c("0<=X<=25","25<X<=50","50<X<=75","75<X<=100","100<X<=200","X>200"))
 
-ggplot(bnb_data[bnb_data$num_reviews=='0<=X<=25',],aes(x=number_of_reviews))+stat_ecdf()
 median(bnb_data$number_of_reviews)
 
 #reviews per month
-ggplot(bnb_data,aes(x=reviews_per_month))+stat_ecdf()+xlim(c(0,10))
 median(bnb_data$reviews_per_month,na.rm=T)
 mean(bnb_data$reviews_per_month,na.rm=T)
 
 #Host listings and neighbourhood group
 ggplot(bnb_data,aes(x=neighbourhood_group,y=calculated_host_listings_count))+
-  geom_boxplot(outlier.shape = 4)+ylim(c(0,10))
+  geom_violin()+ylim(c(0,10))
 
+#Find better way to plot!
 ggplot(bnb_data,aes(x=calculated_host_listings_count,fill=neighbourhood_group))+geom_bar()+theme_minimal()+
   xlim(c(0,10))
 
-#Host listings and room type
+#Find better way to plot!
 ggplot(bnb_data,aes(x=calculated_host_listings_count,fill=room_type))+geom_bar()+theme_minimal()+
   xlim(c(0,10))
 
@@ -116,11 +104,15 @@ ny_borders <- c(bottom  = min(bnb_data$latitude),
                  left    = min(bnb_data$longitude),
                  right   = max(bnb_data$longitude))
 
-map <- get_stamenmap(ny_borders, zoom = 12, maptype = "terrain")
+map <- get_stamenmap(ny_borders, zoom = 10, maptype = "terrain",crop=T)
 ?get_stamenmap
 ggmap(map)+stat_density2d(aes(x = longitude, y = latitude, fill = ..level.., alpha = ..level..),
                           geom = "polygon",
                           data = bnb_data) +
   scale_fill_gradient2(low = "yellow", mid="orange", high = "red",midpoint=60)
 
-
+#geom_contour, geom_hex, geom_raster : 3d -> 2d (3 numeric variables)
+#geom_count : 2 catagorical variables with propensity
+#geom_jitter : x=catagorical,y=cts
+#geom_smooth -> loess : local poly fitting
+#            -> multiple lines for classes
