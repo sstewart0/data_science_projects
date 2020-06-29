@@ -106,6 +106,7 @@ ny_borders <- c(bottom  = min(bnb_data$latitude),
 
 map <- get_stamenmap(ny_borders, zoom = 10, maptype = "terrain",crop=T)
 ?get_stamenmap
+#map of density of airbnb's in NY
 ggmap(map)+stat_density2d(aes(x = longitude, y = latitude, fill = ..level.., alpha = ..level..),
                           geom = "polygon",
                           data = bnb_data) +
@@ -116,3 +117,163 @@ ggmap(map)+stat_density2d(aes(x = longitude, y = latitude, fill = ..level.., alp
 #geom_jitter : x=catagorical,y=cts
 #geom_smooth -> loess : local poly fitting
 #            -> multiple lines for classes
+
+#Map of price of airbnb's in NY (price > 1000)
+?scale_fill_gradientn
+ggmap(map)+geom_point(data=bnb_data[bnb_data$price>1000,],aes(x=longitude,y=latitude,colour=price,size=price,alpha=price))+
+  scale_color_gradientn(colours=rainbow(5))+scale_size(range=c(0.5,7))
+
+#Map of room-type and price
+summary(bnb_data$price)
+#less than median price
+ggmap(map)+geom_point(data=bnb_data[bnb_data$price<106,],
+                      aes(x=longitude,y=latitude,colour=room_type,size=price,alpha=price))+
+  scale_size(range=c(0.1,1))
+#(median -> third quartile) price
+ggmap(map)+geom_point(data=bnb_data[bnb_data$price>106 & bnb_data$price<175,],
+                      aes(x=longitude,y=latitude,colour=room_type,alpha=price))
+# >third quartile price
+ggmap(map)+geom_point(data=bnb_data[bnb_data$price>175,],
+                      aes(x=longitude,y=latitude,colour=room_type,alpha=price))
+
+#Proportion contingency tables
+attach(bnb_data)
+#The proportion of room types within each area
+t1 = prop.table(table(room_type,neighbourhood_group),margin=2)
+
+#The proportion of room types over all areas
+t2 = prop.table(table(neighbourhood_group,room_type),margin=2)
+
+#Room type and nbhd group independent?:
+chisq.test(table(room_type,neighbourhood_group))
+#(p-value < 2.2e-16) Reject null, i.e. dependent.
+
+#Most/Least expensive neighbourhoods and their location on map
+a1 = aggregate( price ~ neighbourhood, bnb_data, mean )
+a2 = aggregate( price ~ neighbourhood, bnb_data, median )
+a3 = cbind(a1,a2[,2],as.data.frame(table(neighbourhood))[,2])
+
+colnames(a3)[2]="Mean_Price"
+colnames(a3)[3]="Median_Price"
+colnames(a3)[4]="Frequency"
+
+library(dplyr)
+summary(a3[,4])#cutoff freq=10 (lower quartile)
+a4 = a3[a3[,4]>10,]
+
+#Top ten most expensive nbhds (median), with at least 10 listings:
+tail(a4[order(a4[,3]),],n=10)
+l=c("Tribeca","NoHo","Flatiron District","Midtown","West Village","Financial District","SoHo",
+    "Chelsea","Greenwich Village","Battery Park City")
+?table
+prop.table(table(bnb_data[bnb_data$neighbourhood %in% l,]$room_type))
+ggmap(map)+geom_point(data=bnb_data[bnb_data$neighbourhood %in% l,],
+                      aes(x=longitude,y=latitude,fill=neighbourhood,shape=room_type))+
+  scale_shape_manual(values=c(21,22,23))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))
+#fill,shape,stroke
+
+#Top ten cheapest nbhds (median), with at least 10 listings:
+head(a4[order(a4[,3]),],n=10)
+l2=c("Concord","Corona","Hunts Point","Tremont","Soundview","Whitestone","Bronxdale","Van Nest",
+     "Morris Heights","Woodhaven")
+prop.table(table(bnb_data[bnb_data$neighbourhood %in% l2,]$room_type))
+ggmap(map)+geom_point(data=bnb_data[bnb_data$neighbourhood %in% l2,],
+                      aes(x=longitude,y=latitude,fill=neighbourhood,shape=room_type))+
+  scale_shape_manual(values=c(21,22,23))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))
+
+#correlation numeric variables:
+bnb_data$num_reviews=as.factor(bnb_data$num_reviews)
+library(corrplot)
+col = colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+#Pearson correlation coefficient, use only numeric variables and remove irrelevant id column
+corr = cor(bnb_data[,!(names(bnb_data)=="id") & sapply(bnb_data, is.numeric)],use = "pairwise.complete.obs")
+res =cor.mtest(bnb_data[,!(names(bnb_data)=="id") & sapply(bnb_data, is.numeric)],use = "pairwise.complete.obs", conf.level = .95)
+corrplot(corr,method="color",col=col(200),type="upper",tl.col = "black", addCoef.col = "black",
+         tl.srt = 90,order="hclust",p.mat=res$p,insig="blank",sig.level=0.01,diag=F)
+
+
+#Plot Mean prices of nbhds with standard error bars, increasing order, colour=nbhd_group
+
+#Calculate standard errors:
+se = aggregate( price ~ neighbourhood, bnb_data, function(x) sd(x)/sqrt(length(x)) )[,2]
+a3=cbind(a3,se)
+
+#Add nbhd_group
+group=rep("Bronx",221)
+for (i in 0:nrow(a3)){
+  group[i]=as.character(bnb_data[bnb_data$neighbourhood==a3[,1][i],]$neighbourhood_group[1])
+}
+a3=cbind(a3,group)
+
+ggplot(a3[a3$Frequency>10,], aes(x=reorder(neighbourhood,Mean_Price), y=Mean_Price,colour=group)) + 
+  geom_errorbar(aes(ymin=Mean_Price-se, ymax=Mean_Price+se), width=.1)+geom_point(shape=4,size=2)+
+  theme(axis.text.x = element_blank())+
+  labs(x="Neighbourhood",y="Mean Price",title="Mean Prices of Neighbourhoods (with more than 10 listings)")
+
+#bar plot for room_types
+ggplot(bnb_data,aes(x=room_type,fill=neighbourhood_group))+
+  geom_bar(position="stack")+
+  geom_text_repel(aes(label=scales::percent(..count../sum(..count..))),stat="count",position=position_stack())
+
+#How many hosts have more than 10 listings
+nrow(distinct(bnb_data[bnb_data$calculated_host_listings_count>10,],host_id))
+#List of unique host id's with more than 10 listings, in decreasing order.
+l3=head(distinct(bnb_data[order(bnb_data$calculated_host_listings_count,decreasing = T),],host_id),n=94)[,1]
+
+#Map of hosts with >100 listings
+ggmap(map)+geom_point(data=bnb_data[((bnb_data$host_id %in% l3) & bnb_data$calculated_host_listings_count>100),],
+                      aes(x=longitude,y=latitude,fill=host_name,shape=room_type))+
+  scale_shape_manual(values=c(21,22,23))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))
+
+#Map of hosts with  49<listings<101
+ggmap(map)+geom_point(data=bnb_data[((bnb_data$host_id %in% l3) & bnb_data$calculated_host_listings_count<101 &
+                                       bnb_data$calculated_host_listings_count>49),],
+                      aes(x=longitude,y=latitude,fill=host_name,shape=room_type))+
+  scale_shape_manual(values=c(21,22,23))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))
+
+#Map of hosts with  10<listings<50
+ggmap(map)+geom_point(data=bnb_data[((bnb_data$host_id %in% l3) & bnb_data$calculated_host_listings_count<50),],
+                      aes(x=longitude,y=latitude,shape=room_type,fill=neighbourhood_group))+
+  scale_shape_manual(values=c(21,22,23))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))
+
+#Any trends in hosts with >10 listings?
+tycoons = bnb_data[bnb_data$host_id %in% l3,]
+summary(tycoons)
+#room_type,availability,price,location,reviews,min-nights?
+
+#function for mode of catagorical variable:
+calculate_mode = function(x) {
+  uniqx = unique(x)
+  uniqx[which.max(tabulate(match(x, uniqx)))]
+}
+
+gd = tycoons %>%
+  group_by(host_id) %>%
+  summarise(price=mean(price),availability_365=mean(availability_365),minimum_nights=mean(minimum_nights),
+            reviews_per_month=mean(reviews_per_month),number_of_reviews=mean(number_of_reviews),
+            neighbourhood=calculate_mode(neighbourhood),neighbourhood_group=calculate_mode(neighbourhood_group),
+            calculated_host_listings_count=mean(calculated_host_listings_count))
+h=mean(bnb_data$price)
+#Plot mean prices of host listings
+ggplot(gd,aes(x=reorder(host_id,price),y=price,fill=neighbourhood_group,size=calculated_host_listings_count))+
+  geom_point(data=tycoons,alpha=.4,size=.5,shape=4)+geom_point(shape=21)+theme(axis.text.x = element_blank())+
+  geom_hline(yintercept = h,colour="red",linetype="dashed")+
+  ylim(c(0,1000))
+
+library(qdap)
+l4=c("midtown","Central Park","manhattan","Times Square","Stock Exchange","Upper East","Upper West","Upper East Side",
+     "Upper West Side")
+words=termco(tycoons$name,match.list=l4,short.term = T,ignore.case=T,apostrophe.remove = T,
+             digit.remove = T)
+allwords=word_list(bnb_data$name)
+allwords
+
+
+
+
+
