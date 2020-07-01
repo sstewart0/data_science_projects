@@ -206,6 +206,8 @@ for (i in 0:nrow(a3)){
   group[i]=as.character(bnb_data[bnb_data$neighbourhood==a3[,1][i],]$neighbourhood_group[1])
 }
 a3=cbind(a3,group)
+colnames(a3)[2]=c("Mean_Price")
+colnames(a3)[3]=c("Median_Price")
 
 ggplot(a3[a3$Frequency>10,], aes(x=reorder(neighbourhood,Mean_Price), y=Mean_Price,colour=group)) + 
   geom_errorbar(aes(ymin=Mean_Price-se, ymax=Mean_Price+se), width=.1)+geom_point(shape=4,size=2)+
@@ -263,15 +265,87 @@ h=mean(bnb_data$price)
 ggplot(gd,aes(x=reorder(host_id,price),y=price,fill=neighbourhood_group,size=calculated_host_listings_count))+
   geom_point(data=tycoons,alpha=.4,size=.5,shape=4)+geom_point(shape=21)+theme(axis.text.x = element_blank())+
   geom_hline(yintercept = h,colour="red",linetype="dashed")+
-  ylim(c(0,1000))
+  ylim(c(0,1000))+labs(x="Host",y="Price",title = "Tycoon's Mean Airbnb Price")
 
 library(qdap)
-l4=c("midtown","Central Park","manhattan","Times Square","Stock Exchange","Upper East","Upper West","Upper East Side",
-     "Upper West Side")
-words=termco(tycoons$name,match.list=l4,short.term = T,ignore.case=T,apostrophe.remove = T,
-             digit.remove = T)
+#Areas included in name of airbnb?
+manhattan_areas=distinct(bnb_data[bnb_data$neighbourhood_group=="Manhattan",],neighbourhood)
+manhattan_areas[,1]=as.character(manhattan_areas[,1])
+neighbourhood=manhattan_areas[,1]
+
+brooklyn_areas=distinct(bnb_data[bnb_data$neighbourhood_group=="Brooklyn",],neighbourhood)
+brook_areas=as.character(brooklyn_areas[,1])
+
+bronx_areas=distinct(bnb_data[bnb_data$neighbourhood_group=="Bronx",],neighbourhood)
+brnx_areas=as.character(bronx_areas[,1])
+
+stat_isl_areas=distinct(bnb_data[bnb_data$neighbourhood_group=="Staten Island",],neighbourhood)
+stat_areas=as.character(stat_isl_areas[,1])
+
+queens_areas=distinct(bnb_data[bnb_data$neighbourhood_group=="Queens",],neighbourhood)
+qns_areas=as.character(queens_areas[,1])
+
+areas = list(neighbourhood,brook_areas,brnx_areas,stat_areas,qns_areas)
+
+#Manhattan
+man_words=termco(bnb_data[bnb_data$neighbourhood_group=="Manhattan",]$name,match.list=neighbourhood,short.term = T,
+             ignore.case=T,apostrophe.remove = T,digit.remove = T)
+man_words$rnp[,order(man_words$prop,decreasing = T)]
+
+m1=neighbourhood
+x0=rep(0,length(neighbourhood))
+m1=cbind(neighbourhood,x0,x0,x0,x0)
+colnames(m1)[1:5]=c("neighbourhood","True_Claims","True_Claims_Perc","False_Claims","False_Claims_Perc")
+m1[colnames(m1)[2:5]] <- sapply(m1[colnames(m1)[2:5]],as.numeric)
+m1=as.data.frame(m1)
+
+for (i in 1:nrow(m1)){
+  t=termco(bnb_data[bnb_data$neighbourhood==neighbourhood[i],]$name,match.list=neighbourhood[i],short.term = T,
+           ignore.case=T,apostrophe.remove = T,digit.remove = T)
+  m1[i,2]=as.numeric(t$raw[3])
+  m1[i,3]=as.numeric(round(t$prop[3],2))
+}
+for (i in 1:nrow(m1)){
+  t=termco(bnb_data[(bnb_data$neighbourhood!=neighbourhood[i])&(bnb_data$neighbourhood_group=="Manhattan"),]$name,
+           match.list=neighbourhood[i],short.term = T,ignore.case=T,apostrophe.remove = T,digit.remove = T)
+  m1[i,4]=as.numeric(t$raw[3])
+  m1[i,5]=as.numeric(round(t$prop[3],2))
+}
+#Add price, reviews and frquency to improve plots
+gm = bnb_data[bnb_data$neighbourhood_group=="Manhattan",] %>%
+  group_by(neighbourhood) %>%
+  summarise(price=median(price),number_of_reviews=median(number_of_reviews),
+            Freq=n())
+
+m1=merge(m1,gm,by=c("neighbourhood"))
+#Which Manhattan neighbourhoods use neighbourhood name in Airbnb Title
+ggplot(m1,aes(reorder(x=neighbourhood,True_Claims_Perc),y=True_Claims_Perc,fill=Freq))+
+  geom_point(shape=21,size=2)+theme_minimal()+scale_fill_gradient(low="yellow",high="red")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(x="Neighbourhood",y="%",title="Which Manhattan neighbourhoods use neighbourhood name in Airbnb Title")
+
+#Which Manhattan neighbourhoods "falsely" use neighbourhood name in Airbnb Title
+ggplot(m1,aes(reorder(x=neighbourhood,False_Claims),y=False_Claims,fill=Freq))+
+  geom_point(shape=21,size=2)+theme_minimal()+scale_fill_gradient(low="yellow",high="red")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),legend.position="none")+
+  labs(x="Neighbourhood",y="Count",title="Which Manhattan neighbourhoods have name 'falsely' used in Airbnb Title")
+
+m1[order(-m1$False_Claims),]
+Total_Claims = m1[,2]+m1[,4]
+Total_Claims_Perc = round((Total_Claims/m1$Freq)*100,2)
+m1 = cbind(m1,Total_Claims,Total_Claims_Perc)
+
+m1[order(-m1$Total_Claims_Perc),]
+View(bnb_data)
+colnames(bnb_data)
+#Brooklyn
+brook_words=termco(bnb_data[bnb_data$neighbourhood_group=="Brooklyn",]$name,match.list=brook_areas,short.term = T,
+                 ignore.case=T,apostrophe.remove = T,digit.remove = T)
+brook_words$rnp[,order(brook_words$prop,decreasing = T)]
+
+
 allwords=word_list(bnb_data$name)
-allwords
+head(allwords$fswl$all,30)
 
 
 
