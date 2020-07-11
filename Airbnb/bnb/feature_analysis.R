@@ -295,7 +295,7 @@ man_words$rnp[,order(man_words$prop,decreasing = T)]
 m1=neighbourhood
 x0=rep(0,length(neighbourhood))
 m1=cbind(neighbourhood,x0,x0,x0,x0)
-colnames(m1)[1:5]=c("neighbourhood","True_Claims","True_Claims_Perc","False_Claims","False_Claims_Perc")
+colnames(m1)[1:5]=c("neighbourhood","True_Claims","True_Claims_Perc","Other_Claims","Other_Claims_Perc")
 m1[colnames(m1)[2:5]] <- sapply(m1[colnames(m1)[2:5]],as.numeric)
 m1=as.data.frame(m1)
 
@@ -303,45 +303,159 @@ for (i in 1:nrow(m1)){
   t=termco(bnb_data[bnb_data$neighbourhood==neighbourhood[i],]$name,match.list=neighbourhood[i],short.term = T,
            ignore.case=T,apostrophe.remove = T,digit.remove = T)
   m1[i,2]=as.numeric(t$raw[3])
-  m1[i,3]=as.numeric(round(t$prop[3],2))
 }
 for (i in 1:nrow(m1)){
   t=termco(bnb_data[(bnb_data$neighbourhood!=neighbourhood[i])&(bnb_data$neighbourhood_group=="Manhattan"),]$name,
            match.list=neighbourhood[i],short.term = T,ignore.case=T,apostrophe.remove = T,digit.remove = T)
   m1[i,4]=as.numeric(t$raw[3])
-  m1[i,5]=as.numeric(round(t$prop[3],2))
 }
-#Add price, reviews and frquency to improve plots
+#Add frquency to create %
 gm = bnb_data[bnb_data$neighbourhood_group=="Manhattan",] %>%
   group_by(neighbourhood) %>%
-  summarise(price=median(price),number_of_reviews=median(number_of_reviews),
-            Freq=n())
+  summarise(Freq=n())
 
+#Add total claims column, correlation with hipness/"popularity"?:
+m1$Total_Claims=m1$True_Claims+m1$Other_Claims
+
+#Add percentages
 m1=merge(m1,gm,by=c("neighbourhood"))
+m1$True_Claims_Perc=round((m1$True_Claims/m1$Freq)*100,2)
+m1[order(-m1$Total_Claims),]
+View(bnb_data)
+
 #Which Manhattan neighbourhoods use neighbourhood name in Airbnb Title
 ggplot(m1,aes(reorder(x=neighbourhood,True_Claims_Perc),y=True_Claims_Perc,fill=Freq))+
   geom_point(shape=21,size=2)+theme_minimal()+scale_fill_gradient(low="yellow",high="red")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
   labs(x="Neighbourhood",y="%",title="Which Manhattan neighbourhoods use neighbourhood name in Airbnb Title")
 
-#Which Manhattan neighbourhoods "falsely" use neighbourhood name in Airbnb Title
-ggplot(m1,aes(reorder(x=neighbourhood,False_Claims),y=False_Claims,fill=Freq))+
+#Total references of Manhattan neighbourhoods in Airbnb title
+ggplot(m1,aes(reorder(x=neighbourhood,Total_Claims),y=Total_Claims,fill=Total_Claims))+
   geom_point(shape=21,size=2)+theme_minimal()+scale_fill_gradient(low="yellow",high="red")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),legend.position="none")+
-  labs(x="Neighbourhood",y="Count",title="Which Manhattan neighbourhoods have name 'falsely' used in Airbnb Title")
+  labs(x="Neighbourhood",y="Count",title="Total references of Manhattan neighbourhoods in Airbnb title")
 
-m1[order(-m1$False_Claims),]
-Total_Claims = m1[,2]+m1[,4]
-Total_Claims_Perc = round((Total_Claims/m1$Freq)*100,2)
-m1 = cbind(m1,Total_Claims,Total_Claims_Perc)
 
-m1[order(-m1$Total_Claims_Perc),]
-View(bnb_data)
-colnames(bnb_data)
-#Brooklyn
-brook_words=termco(bnb_data[bnb_data$neighbourhood_group=="Brooklyn",]$name,match.list=brook_areas,short.term = T,
-                 ignore.case=T,apostrophe.remove = T,digit.remove = T)
-brook_words$rnp[,order(brook_words$prop,decreasing = T)]
+# (1) what areas are quasi-areas, e.g. Civic Center is quasi-(SoHo/Tribeca/...)
+# (2) which properties claim distance to areas, e.g. near/to/from/... SoHo
+# (3) are there more popular names for the neighbourhoods, 
+#    e.g. Flatiron District is more commonly known as simply Flatiron
+#
+w=word_list(bnb_data[bnb_data$neighbourhood==neighbourhood[1],]$name)
+head(w$fwl$all,30)
+
+#Individual Case analysis
+for (i in 1:5){
+  print(neighbourhood[i])
+  print(head(word_list(bnb_data[bnb_data$neighbourhood==neighbourhood[i],]$name)$fwl$all,20))
+}
+
+#(3) -> create list of the names associated with areas
+z=as.data.frame(neighbourhood)
+aka=rep("",nrow(z))
+z=cbind(z,aka)
+z$aka=as.character(z$aka)
+z$neighbourhood=as.character(z$neighbourhood)
+
+z[z$neighbourhood=="Marble Hill",]$aka=list(c(MarbleHill=list(c("Marble Hill"))))
+z[z$neighbourhood=="Stuyvesant Town",]$aka = list(c(EastVillage=list(c("East Village")),DTown=list(c("Downtown")),
+                                                    Stuytown=list(c("Stuytown")),Gramercy=list(c("Gramercy"))))
+z[z$neighbourhood=="Civic Center",]$aka=list(c(DTown=list(c("Downtown")),Tribeca=list(c("Tribeca"))))
+z[z$neighbourhood=="Battery Park City",]$aka=list(c(Battery=list(c("Battery")),DTown=list(c("Downtown")),
+                                                    Manhattan=list(c("Manhattan"))))
+z[z$neighbourhood=="Tribeca",]$aka=list(c(Tribeca=list(c("Tribeca")),Blueground=list(c("Blueground"))))
+z[z$neighbourhood=="Theater District",]$aka=list(c(TimesSquare=list(c("Times Square")),
+                                                   Midtown=list(c("Midtown"))))
+z[z$neighbourhood=="Gramercy",]$aka=list(c(Gramercy=list(c("Gramercy")),EastVillage=list(c("East Village")),
+                                           UnionSquare=list(c("Union Square"))))
+z[z$neighbourhood=="Nolita",]$aka=list(c(Nolita=list(c("Nolita")),SoHo=list(c("SoHo"))))
+z[z$neighbourhood=="Two Bridges",]$aka=list(c(CTown=list(c("Chinatown")),DTown=list(c("Downtown")),
+                                              Manhattan=list(c("Manhattan"))))
+z[z$neighbourhood=="Little Italy",]$aka=list(c(SoHo=list(c("Soho")),Nolita=list(c("Nolita"))))
+z[z$neighbourhood=="Greenwich Village",]$aka=list(c(Village=list(c("Village")),SoHo=list(c("Soho")),
+                                                    Greenwich=list(c("Greenwich"))))
+z[z$neighbourhood=="Roosevelt Island",]$aka=list(c(Roosevelt=list(c("Roosevelt")),
+                                                   Island=list(c("Island")),Manhattan=list(c("Manhattan"))))
+z[z$neighbourhood=="Flatiron District",]$aka=list(c(Flatiron=list(c("Flatiron")),
+                                                    Gramercy=list(c("Gramercy")),Chelsea=list(c("Chelsea"))))
+z[z$neighbourhood=="NoHo",]$aka=list(c(NoHo=list(c("NoHo")),SoHo=list(c("SoHo")),
+                                       GreenwichVillage="Greenwich Village",EastVillage=list(c("East Village"))))
+z[z$neighbourhood=="Morningside Heights",]$aka=list(c(Columbia=list(c("Columbia")),UpperWest=list(c("Upper West"))))
+z[z$neighbourhood=="Financial District",]$aka=list(c(Sonder=list(c("Sonder")),StockExchange=list(c("Stock Exchange")),
+                                                     FDistrict=list(c("fidi","Financial District")),
+                                                     DTown=list(c("Downtown"))))
+z[z$neighbourhood=="Washington Heights",]$aka=list(c(WHeights=list(c("Washington Heights")),
+                                                     Manhattan=list(c("Manhattan"))))
+z[z$neighbourhood=="Upper East Side",]$aka=list(c(UES=list(c("Upper East","UES"))))
+z[z$neighbourhood=="SoHo",]$aka=list(c(SoHo=list(c("SoHo"))))
+z[z$neighbourhood=="Kips Bay",]$aka=list(c(Midtown=list(c("Midtown")),Manhattan=list(c("Manhattan")),
+                                           Gramercy=list(c("Gramercy"))))
+z[z$neighbourhood=="Lower East Side",]$aka=list(c(LES=list(c("LES","Lower East Side"))))
+z[z$neighbourhood=="East Village",]$aka=list(c(EastVillage=list(c("East Village"))))
+z[z$neighbourhood=="Inwood",]$aka=list(c(Inwood=list(c("Inwood")),Manhattan=list(c("Manhattan"))))
+z[z$neighbourhood=="Chelsea",]$aka=list(c(Chelsea=list(c("Chelsea"))))
+z[z$neighbourhood=="West Village",]$aka=list(c(Village=list(c("Village"))))
+z[z$neighbourhood=="Chinatown",]$aka=list(c(CTown=list(c("Chinatown")),LES=list(c("Lower East Side","LES"))))
+z[z$neighbourhood=="Upper West Side",]$aka=list(c(UWS=list(c("Upper West Side","UWS")),
+                                                  CentralPark=list(c("Central Park"))))
+z[z$neighbourhood=="Hell's Kitchen",]$aka=list(c(HellsKitchen=list(c("Kitchen")),
+                                                 TimesSquare=list(c("Times Square")),Midtown=list(c("Midtown"))))
+z[z$neighbourhood=="Murray Hill",]$aka=list(c(Midtown=list(c("Midtown")),Manhattan=list(c("Manhattan")),
+                                              Sonder=list(c("Sonder")),MurrayHill=list(c("Murray Hill"))))
+z[z$neighbourhood=="East Harlem",]$aka=list(c(Harlem=list(c("Harlem")),CentralPark=list(c("Central Park")),
+                                              Manhattan=list(c("Manhattan"))))
+z[z$neighbourhood=="Harlem",]$aka=list(c(Harlem=list(c("Harlem")),CentralPark=list(c("Central Park")),
+                                         Manhattan=list(c("Manhattan"))))
+z[z$neighbourhood=="Midtown",]$aka=list(c(CentralPark=list(c("Central Park")),
+                                          Manhattan=list(c("Manhattan"))))
+#create unique list of akas
+akas=list()
+for (i in z$aka){
+  akas=append(akas,i)
+}
+un = unlist(akas)
+res = Map(`[`, akas, relist(!duplicated(un), skeleton = akas))
+akas = res[lapply(res,length)>0]
+
+#Create DF for counts of akas
+m = matrix(0,ncol=length(akas)+1,nrow=length(neighbourhood))
+myDF = as.data.frame(m)
+colnames(myDF)=c("neighbourhood",names(akas))
+myDF$neighbourhood=neighbourhood
+
+#Populate columns
+for (i in 1:nrow(myDF)){
+  t = termco(bnb_data[bnb_data$neighbourhood==z[i,1],]$name,match.list=z[[i,2]],short.term = T,
+           ignore.case=T,apostrophe.remove = T,digit.remove = T)
+  for (j in 3:length(t$raw)){
+    myDF[myDF$neighbourhood==z[i,1],names(t$raw[j])]=t$raw[[j]]
+  }
+}
+
+#Add Frequency to create proportions:
+myfreq = bnb_data[bnb_data$neighbourhood_group=="Manhattan",] %>%
+  group_by(neighbourhood) %>%
+  summarise(freq=n())
+myDF=merge(myDF,myfreq,by=c("neighbourhood"))
+
+#Change to proportions
+for (i in 1:nrow(myDF)){
+  myDF[i,2:(ncol(myDF)-1)]=myDF[i,2:(ncol(myDF)-1)]/myDF[i,ncol(myDF)]
+}
+#Remove freq column
+myDF=myDF[,-which(names(myDF) %in% c("freq"))]
+View(myDF)
+
+#Use melt to 'classify' columns:
+library(reshape2)
+myDF = melt(myDF,id.vars = "neighbourhood",variable.name = "AKA")
+
+#Plot popularity of the named areas used to describe neighbourhoods
+ggplot(myDF[myDF$value>0,],aes(neighbourhood,value))+
+  geom_point(aes(alpha=value),shape=21,fill="pink")+
+  geom_text_repel(aes(label = ifelse(value >0.3, as.character(AKA),"")))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(x="Neighbourhood",y="%",title="Popularity of the named areas used to describe neighbourhoods")
 
 
 allwords=word_list(bnb_data$name)
