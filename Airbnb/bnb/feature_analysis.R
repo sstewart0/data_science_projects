@@ -7,12 +7,15 @@ sapply(bnb_data,class)
 bnb_data[,13] = as.Date(bnb_data[,13])
 
 library(ggplot2)
+library(RColorBrewer)
 
 #Density of airbnb's in nbhds:
-ggplot(bnb_data,aes(x=neighbourhood_group,fill=neighbourhood_group))+xlab("Area")+
-  geom_bar()+theme_minimal()+theme(legend.position = "none")+
+ggplot(bnb_data,aes(x=neighbourhood_group,fill=neighbourhood_group))+
+  geom_bar()+theme_minimal()+theme_minimal()+theme(legend.position = "none")+
+  scale_fill_brewer(palette="Set3")+
   geom_text(aes(label=..count..),stat="count",position=position_stack())+
-  scale_x_discrete(limits=c("Manhattan","Brooklyn","Queens","Bronx","Staten Island"))
+  scale_x_discrete(limits=c("Manhattan","Brooklyn","Queens","Bronx","Staten Island"))+
+  labs(x="Neighbourhood Group",y="Count",title="Number of Airbnb's located in each neighbourhood group.")
 
 levels(bnb_data$neighbourhood_group)
 counts = rbind(nlevels(droplevels(bnb_data[neighbourhood_group=='Bronx',]$neighbourhood)),
@@ -26,27 +29,40 @@ colnames(nbhd_count) = c("Area","Number_of_sub_divisions")
 nbhd_count$Number_of_sub_divisions = as.numeric(as.character(nbhd_count$Number_of_sub_divisions))
 
 #Number of nbhds within each nbhd group
-ggplot(nbhd_count,aes(Area,Number_of_sub_divisions,fill=Area)) + geom_bar(stat="identity",colour='black')+
-  xlab("Area")+ylab("Number of Sub-Divisions")+theme_minimal()+theme(legend.position="none")+
+ggplot(nbhd_count,aes(Area,Number_of_sub_divisions,fill=Area)) + geom_bar(stat="identity")+
+  labs(x="Neighbourhood Group",y="Number of neighbourhoods",
+       title="Number of neighbourhoods within each neighbourhood group")+
+  scale_fill_brewer(palette="Set3")+
+  theme_minimal()+theme(legend.position="none")+
   scale_x_discrete(limits=c("Manhattan","Staten Island","Brooklyn","Bronx","Queens"))
 
 #Split of room types across area
 library(ggrepel)
 table(neighbourhood_group,room_type)
+
 ggplot(bnb_data,aes(x=neighbourhood_group,fill=room_type))+geom_bar(position = position_dodge())+
   geom_text_repel(aes(label=..count..),stat="count",position=position_dodge(0.9))+
-  scale_fill_brewer(palette="Paired")+theme_minimal()+xlab("Area")+
-  scale_x_discrete(limits=c("Manhattan","Brooklyn","Queens","Bronx","Staten Island"))
+  scale_fill_brewer(palette="Set3")+theme_minimal()+
+  scale_x_discrete(limits=c("Manhattan","Brooklyn","Queens","Bronx","Staten Island"))+
+  labs(x="Neighbourhood Group",y="Count",title="Room types within each neighbourhood group")
 
 #Price range for each area 
 ggplot(bnb_data,aes(x=neighbourhood_group,y=price,fill=neighbourhood_group))+
-  geom_violin()+ylim(c(0,600))+theme(legend.position= "none")+
-  scale_x_discrete(limits=c("Manhattan","Brooklyn","Queens","Staten Island","Bronx"))
+  geom_violin()+ylim(c(0,600))+theme_minimal()+theme(legend.position= "none")+
+  scale_fill_brewer(palette="Set3")+
+  scale_x_discrete(limits=c("Manhattan","Brooklyn","Queens","Staten Island","Bronx"))+
+  labs(x="Neighbourhood Group",y="Price",
+       title="Distribution of Airbnb price (per night) within each neighbouhood group")
 
 #Minimum nights for each area
 ggplot(bnb_data,aes(x=neighbourhood_group,y=minimum_nights,fill=neighbourhood_group))+
+  scale_fill_brewer(palette="Set3")+theme_minimal()+
   geom_violin()+theme(legend.position= "none")+ylim(c(0,35))+
-  scale_x_discrete(limits=c("Manhattan","Brooklyn","Queens","Staten Island","Bronx"))
+  scale_x_discrete(limits=c("Manhattan","Brooklyn","Queens","Staten Island","Bronx"))+
+  labs(x="Neighbourhood Group",y="Minimum nights",
+       title="Distribution of Airbnb minimum nights within each neighbouhood group")
+
+
 
 #split reviews into categories
 num_reviews<-rep(NA,48895)
@@ -61,32 +77,39 @@ bnb_data[number_of_reviews>200,]$num_reviews <- c("X>200")
 
 bnb_data$num_reviews=as.factor(bnb_data$num_reviews)
 nrow(bnb_data[is.na(bnb_data$num_reviews),])
-
 #Plot number of reviews
 ggplot(bnb_data,aes(x=num_reviews,fill=num_reviews))+geom_bar()+theme_minimal()+
   theme(legend.position = "none")+labs(x="Number of Reviews (X)")+
   scale_x_discrete(limits=c("0<=X<=25","25<X<=50","50<X<=75","75<X<=100","100<X<=200","X>200"))
-
-median(bnb_data$number_of_reviews)
-
 #reviews per month
 median(bnb_data$reviews_per_month,na.rm=T)
 mean(bnb_data$reviews_per_month,na.rm=T)
-
-#Host listings and neighbourhood group
-ggplot(bnb_data,aes(x=neighbourhood_group,y=calculated_host_listings_count))+
-  geom_violin()+ylim(c(0,10))
-
 #Find better way to plot!
 ggplot(bnb_data,aes(x=calculated_host_listings_count,fill=neighbourhood_group))+geom_bar()+theme_minimal()+
   xlim(c(0,10))
-
 #Find better way to plot!
 ggplot(bnb_data,aes(x=calculated_host_listings_count,fill=room_type))+geom_bar()+theme_minimal()+
   xlim(c(0,10))
 
-median(bnb_data$calculated_host_listings_count,na.rm=T)
-mean(bnb_data$calculated_host_listings_count,na.rm=T)
+#Apply mean (and median) calculated host listings to nbhd groups
+install.packages("gt")
+library(gt)
+library(tidyverse)
+library(glue)
+
+bnb_data %>%
+  group_by(neighbourhood_group) %>%
+  summarise(Median = median(calculated_host_listings_count,na.rm=T),
+            Mean = round(mean(calculated_host_listings_count,na.rm=T),1),
+            Freq = n()) %>%
+  gt() %>%
+  tab_header(
+    title = "Calculated Host Listings"
+  ) %>%
+  tab_spanner(
+    label = "Statistics",
+    columns = vars(Median,Mean,Freq)
+  )
 
 #Packages for plotting maps
 install.packages("ggmap")
@@ -105,44 +128,67 @@ ny_borders <- c(bottom  = min(bnb_data$latitude),
                  right   = max(bnb_data$longitude))
 
 map <- get_stamenmap(ny_borders, zoom = 10, maptype = "terrain",crop=T)
-?get_stamenmap
+
 #map of density of airbnb's in NY
 ggmap(map)+stat_density2d(aes(x = longitude, y = latitude, fill = ..level.., alpha = ..level..),
-                          geom = "polygon",
-                          data = bnb_data) +
-  scale_fill_gradient2(low = "yellow", mid="orange", high = "red",midpoint=60)
-
-#geom_contour, geom_hex, geom_raster : 3d -> 2d (3 numeric variables)
-#geom_count : 2 catagorical variables with propensity
-#geom_jitter : x=catagorical,y=cts
-#geom_smooth -> loess : local poly fitting
-#            -> multiple lines for classes
+                          geom = "polygon",data = bnb_data) +
+  scale_fill_gradient2(low = "yellow", mid="orange", high = "red",midpoint=60)+
+  theme(legend.position = "none")+
+  labs(x="Longitude",y="Latitude",title="Density of Airbnb properties in NY")
 
 #Map of price of airbnb's in NY (price > 1000)
-?scale_fill_gradientn
-ggmap(map)+geom_point(data=bnb_data[bnb_data$price>1000,],aes(x=longitude,y=latitude,colour=price,size=price,alpha=price))+
-  scale_color_gradientn(colours=rainbow(5))+scale_size(range=c(0.5,7))
+ggmap(map)+geom_point(data=bnb_data[bnb_data$price>1000,],aes(x=longitude,y=latitude,fill=price,alpha=price),
+                      shape=23,size=3)+
+  scale_fill_gradientn(colours=rainbow(5))+
+  labs(x="Longitude",y="Latitude",title="Map of the most expensive Airbnb properties.")
 
 #Map of room-type and price
 summary(bnb_data$price)
 #less than median price
 ggmap(map)+geom_point(data=bnb_data[bnb_data$price<106,],
-                      aes(x=longitude,y=latitude,colour=room_type,size=price,alpha=price))+
-  scale_size(range=c(0.1,1))
+                      aes(x=longitude,y=latitude,shape=room_type,fill=room_type,size=-price,alpha=-price))+
+  scale_size(range=c(0.1,1))+
+  labs(x="Longitude",y="Latitude",title="Properties priced less than median price")+
+  scale_shape_manual(values=c(21,22,23))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))
+
 #(median -> third quartile) price
 ggmap(map)+geom_point(data=bnb_data[bnb_data$price>106 & bnb_data$price<175,],
-                      aes(x=longitude,y=latitude,colour=room_type,alpha=price))
-# >third quartile price
-ggmap(map)+geom_point(data=bnb_data[bnb_data$price>175,],
-                      aes(x=longitude,y=latitude,colour=room_type,alpha=price))
+                      aes(x=longitude,y=latitude,shape=room_type,fill=room_type))+
+  labs(x="Longitude",y="Latitude",title="Properties priced between median and third quartile price")+
+  scale_shape_manual(values=c(21,22,23))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))
 
 #Proportion contingency tables
 attach(bnb_data)
 #The proportion of room types within each area
 t1 = prop.table(table(room_type,neighbourhood_group),margin=2)
+bnb_data %>%
+  group_by(neighbourhood_group,room_type) %>%
+  summarise(Percentage = n()) %>%
+  group_by(neighbourhood_group) %>% 
+  mutate(Percentage=round(Percentage/sum(Percentage)*100,1)) %>%
+  gt() %>%
+  tab_header(
+    title="Distribution of room type within each neighbourhood group"
+  )%>%
+  tab_spanner(
+    label="Neighbourhood Group",
+    columns=vars(neighbourhood_group)
+  )
 
 #The proportion of room types over all areas
 t2 = prop.table(table(neighbourhood_group,room_type),margin=2)
+
+bnb_data %>%
+  group_by(room_type,neighbourhood_group) %>%
+  summarise(Percentage = n()) %>%
+  group_by(room_type) %>% 
+  mutate(Percentage=round(Percentage/sum(Percentage)*100,1)) %>%
+  gt() %>%
+  tab_header(
+    title="Distribution of neighbourhood group within each room type"
+  )
 
 #Room type and nbhd group independent?:
 chisq.test(table(room_type,neighbourhood_group))
@@ -165,13 +211,13 @@ a4 = a3[a3[,4]>10,]
 tail(a4[order(a4[,3]),],n=10)
 l=c("Tribeca","NoHo","Flatiron District","Midtown","West Village","Financial District","SoHo",
     "Chelsea","Greenwich Village","Battery Park City")
-?table
 prop.table(table(bnb_data[bnb_data$neighbourhood %in% l,]$room_type))
+
 ggmap(map)+geom_point(data=bnb_data[bnb_data$neighbourhood %in% l,],
                       aes(x=longitude,y=latitude,fill=neighbourhood,shape=room_type))+
   scale_shape_manual(values=c(21,22,23))+
-  guides(fill = guide_legend(override.aes=list(shape=21)))
-#fill,shape,stroke
+  guides(fill = guide_legend(override.aes=list(shape=21)))+
+  labs(x="Longitude",y="Latitude",title="Top 10 most expensive neighbourhoods")
 
 #Top ten cheapest nbhds (median), with at least 10 listings:
 head(a4[order(a4[,3]),],n=10)
@@ -181,7 +227,8 @@ prop.table(table(bnb_data[bnb_data$neighbourhood %in% l2,]$room_type))
 ggmap(map)+geom_point(data=bnb_data[bnb_data$neighbourhood %in% l2,],
                       aes(x=longitude,y=latitude,fill=neighbourhood,shape=room_type))+
   scale_shape_manual(values=c(21,22,23))+
-  guides(fill = guide_legend(override.aes=list(shape=21)))
+  guides(fill = guide_legend(override.aes=list(shape=21)))+
+  labs(x="Longitude",y="Latitude",title="Top 10 cheapest neighbourhoods")
 
 #correlation numeric variables:
 bnb_data$num_reviews=as.factor(bnb_data$num_reviews)
@@ -192,7 +239,6 @@ corr = cor(bnb_data[,!(names(bnb_data)=="id") & sapply(bnb_data, is.numeric)],us
 res =cor.mtest(bnb_data[,!(names(bnb_data)=="id") & sapply(bnb_data, is.numeric)],use = "pairwise.complete.obs", conf.level = .95)
 corrplot(corr,method="color",col=col(200),type="upper",tl.col = "black", addCoef.col = "black",
          tl.srt = 90,order="hclust",p.mat=res$p,insig="blank",sig.level=0.01,diag=F)
-
 
 #Plot Mean prices of nbhds with standard error bars, increasing order, colour=nbhd_group
 
@@ -211,13 +257,9 @@ colnames(a3)[3]=c("Median_Price")
 
 ggplot(a3[a3$Frequency>10,], aes(x=reorder(neighbourhood,Mean_Price), y=Mean_Price,colour=group)) + 
   geom_errorbar(aes(ymin=Mean_Price-se, ymax=Mean_Price+se), width=.1)+geom_point(shape=4,size=2)+
-  theme(axis.text.x = element_blank())+
+  theme_minimal()+theme(axis.text.x = element_blank())+
+  scale_colour_brewer(palette="Set2")+
   labs(x="Neighbourhood",y="Mean Price",title="Mean Prices of Neighbourhoods (with more than 10 listings)")
-
-#bar plot for room_types
-ggplot(bnb_data,aes(x=room_type,fill=neighbourhood_group))+
-  geom_bar(position="stack")+
-  geom_text_repel(aes(label=scales::percent(..count../sum(..count..))),stat="count",position=position_stack())
 
 #How many hosts have more than 10 listings
 nrow(distinct(bnb_data[bnb_data$calculated_host_listings_count>10,],host_id))
@@ -226,22 +268,28 @@ l3=head(distinct(bnb_data[order(bnb_data$calculated_host_listings_count,decreasi
 
 #Map of hosts with >100 listings
 ggmap(map)+geom_point(data=bnb_data[((bnb_data$host_id %in% l3) & bnb_data$calculated_host_listings_count>100),],
-                      aes(x=longitude,y=latitude,fill=host_name,shape=room_type))+
+                      aes(x=longitude,y=latitude,fill=host_name,shape=room_type),size=2)+
   scale_shape_manual(values=c(21,22,23))+
-  guides(fill = guide_legend(override.aes=list(shape=21)))
+  theme_minimal()+scale_fill_brewer(palette="Set3")+
+  guides(fill = guide_legend(override.aes=list(shape=21)))+
+  labs(x="Longitude",y="Latitude",title="Hosts with more than 100 listings")
 
 #Map of hosts with  49<listings<101
 ggmap(map)+geom_point(data=bnb_data[((bnb_data$host_id %in% l3) & bnb_data$calculated_host_listings_count<101 &
                                        bnb_data$calculated_host_listings_count>49),],
-                      aes(x=longitude,y=latitude,fill=host_name,shape=room_type))+
+                      aes(x=longitude,y=latitude,fill=host_name,shape=room_type),size=2)+
   scale_shape_manual(values=c(21,22,23))+
-  guides(fill = guide_legend(override.aes=list(shape=21)))
+  theme_minimal()+scale_fill_brewer(palette="Set3")+
+  guides(fill = guide_legend(override.aes=list(shape=21)))+
+  labs(x="Longitude",y="Latitude",title="Hosts with between 50 and 100 listings")
 
 #Map of hosts with  10<listings<50
 ggmap(map)+geom_point(data=bnb_data[((bnb_data$host_id %in% l3) & bnb_data$calculated_host_listings_count<50),],
-                      aes(x=longitude,y=latitude,shape=room_type,fill=neighbourhood_group))+
+                      aes(x=longitude,y=latitude,shape=room_type,fill=neighbourhood_group),size=2)+
   scale_shape_manual(values=c(21,22,23))+
-  guides(fill = guide_legend(override.aes=list(shape=21)))
+  theme_minimal()+scale_fill_brewer(palette="Set3")+
+  guides(fill = guide_legend(override.aes=list(shape=21)))+
+  labs(x="Longitude",y="Latitude",title="Hosts with between 10 and 50 listings")
 
 #Any trends in hosts with >10 listings?
 tycoons = bnb_data[bnb_data$host_id %in% l3,]
@@ -263,8 +311,10 @@ gd = tycoons %>%
 h=mean(bnb_data$price)
 #Plot mean prices of host listings
 ggplot(gd,aes(x=reorder(host_id,price),y=price,fill=neighbourhood_group,size=calculated_host_listings_count))+
-  geom_point(data=tycoons,alpha=.4,size=.5,shape=4)+geom_point(shape=21)+theme(axis.text.x = element_blank())+
+  geom_point(data=tycoons,alpha=.4,size=.5,shape=4)+geom_point(shape=21)+theme_minimal()+
+  theme(axis.text.x = element_blank())+
   geom_hline(yintercept = h,colour="red",linetype="dashed")+
+  scale_fill_brewer(palette="Set3")+
   ylim(c(0,1000))+labs(x="Host",y="Price",title = "Tycoon's Mean Airbnb Price")
 
 library(qdap)
@@ -457,11 +507,8 @@ ggplot(myDF[myDF$value>0,],aes(neighbourhood,value))+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
   labs(x="Neighbourhood",y="%",title="Popularity of the named areas used to describe neighbourhoods")
 
-
 allwords=word_list(bnb_data$name)
 head(allwords$fswl$all,30)
 
-
-
-
+View(bnb_data[bnb_data$neighbourhood=="Civic Center",])
 
