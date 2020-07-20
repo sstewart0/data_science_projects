@@ -509,6 +509,3 @@ ggplot(myDF[myDF$value>0,],aes(neighbourhood,value))+
 
 allwords=word_list(bnb_data$name)
 head(allwords$fswl$all,30)
-
-View(bnb_data[bnb_data$neighbourhood=="Civic Center",])
-
