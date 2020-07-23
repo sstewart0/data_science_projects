@@ -536,6 +536,22 @@ vehicle_data[na_ids,]$Premium=round(pred_prem,1)
 # Finally delete the eronious NA's that have plagued our data:
 vehicle_data=vehicle_data[-which(is.na(vehicle_data$ABI__8_Digit_)),]
 
+#Plot distribution of premiums:
+vehicle_data$missing_premium = rep(F,nrow(vehicle_data))
+vehicle_data[na_premium,]$missing_premium = T
+ggplot(data=vehicle_data,aes(x=Premium,fill=missing_premium))+geom_density(alpha=0.4)+
+  scale_fill_brewer(palette="Set3") +labs(x="Premium")+theme_minimal()
+"
+Distribution of predicted premiums not similar to available premiums,
+this would imply that the accuray of the predictions could be better.
+If the missing features were given/(predicted more accurately) the distribution would be similar.
 
+It would be interesting to see how (some form of) neural-net would perform,
+how natural-language processing in the vehicle-model could help to more accurately
+predict missing features and premiums.
 
+These predictions do not properly reflect the true premiums and would therefore 
+cost the customer - too much => reduces custom for AXA
+                  - too little => cost AXA a lot (not enough reserves)
+"
 
