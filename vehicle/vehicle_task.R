@@ -154,6 +154,7 @@ levels(as.factor(vehicle_data[(na_length),]$P2W.v2))
 #   1. Are all of the same type, that is, numeric,
 #   2. Do not appear to have strong correlations,
 #   3. Imputation may create combinations that are impossible in real-life scenarios.
+#   4. Missing at random.
 
 # Method:
 #   -> Predict missing values separately using relevant non-missing features,
@@ -272,7 +273,7 @@ plot(mpg_lm1_fin)
 # Residuals-vs-fitted => no heteroskedasticity
 # QQ plot and residuals-vs-levarage => outliers may skew parameter results
 
-# Compare various linear models using cross-validation:
+# Compare various models using cross-validation:
 set.seed(1)
 train.control <- trainControl(method = "cv", number = 9)
 summary(vehicle_data[-which(is.na(vehicle_data)),])
@@ -301,16 +302,10 @@ bwplot(results,metric = "RMSE")
 # The final value used for the model was lambda = 1e-04 (regularisation parameter)
 
 # Predict missing MPG:
-missing_data = vehicle_data[na_length,]
-mpg_pred = predict(ridge_model,newdata = missing_data)
-
+mpg_pred = predict(ridge_model,newdata = vehicle_data[na_length,])
 #Round to 1dp and insert missing values (there are two eronious data points with various NA's that I ignore)
 missing_ids = intersect(names(mpg_pred),rownames(missing_data))
-missing_data[missing_ids,]$Vehicle_MPG=round(mpg_pred,1)
-
-# Insert into vehicle_data:
 vehicle_data[missing_ids,]$Vehicle_MPG=round(mpg_pred,1)
-
 "
 METHOD:
   PROS:
@@ -340,7 +335,6 @@ vehicle_data %>%
 # Hence impute group mean length for missing length values
 vehicle_data$Vehicle_Length=ave(vehicle_data$Vehicle_Length,vehicle_data$Vehicle_Doors,
                                 FUN=function(x) ifelse(is.na(x), mean(x,na.rm=TRUE), x))
-
 "
 METHOD:
   PROS:
@@ -348,10 +342,8 @@ METHOD:
     -> Computationally time and cost efficient (unlike, say, random forest)
   CONS:
     -> The true test error will be high
-    -> May create impossible combinations with other variables
-"
+    -> May create impossible combinations with other variables, but less likely than with predicting.
 
-"
 Build model for power to weight ratio?
 variables: max-speed, power, engine-cc, (pred:mpg)
 (If P2W.v2 was available the prediction would be much more accurate since their correlation ≈ perfect positive)
@@ -367,8 +359,8 @@ for (i in 1:2){
   }
 }
 # Choose max-speed quadratic, all else linear (largest reduction in cv-error)
-#Train multiple linear models as before:
-#LS
+# Train multiple linear models as before:
+# LS
 ls_model2 <- train(Vehicle_Power_to_Weight_Ratio~poly(Vehicle_Maximum_Speed,2)+
                      Vehicle_Power+Vehicle_Engine_CC+Vehicle_MPG, data = vehicle_data[-na_length,],
                   method = "lm",trControl = train.control,na.action = na.exclude)
@@ -405,7 +397,8 @@ would be far more accurate. It would be interesting to see how MICE algorithm wo
 
 # How does the lasso model handle adding car-brand?
 large_lasso<- train(Vehicle_Power_to_Weight_Ratio~Vehicle_Maximum_Speed+
-                        Vehicle_Power+Vehicle_Engine_CC+Vehicle_MPG+Vehicle_Brand, data=vehicle_data[-na_length,], method = "lasso",
+                      Vehicle_Power+Vehicle_Engine_CC+Vehicle_MPG+Vehicle_Brand, 
+                    data=vehicle_data[-na_length,], method = "lasso",
                       trControl = train.control,na.action = na.exclude)
 
 results2 <- resamples(list(LS=ls_model2,RIDGE=ridge_model2,LASSO=lasso_model2,PCR=pcr_model2,LargeLasso=large_lasso))
@@ -416,20 +409,132 @@ bwplot(results2,metric = "RMSE")
 "
 Issues with using imputed variables in predicting premium:
   -> Error in imputed values will create inaccurate param's in the fitted model
-    => use non-imputed values to train model.
+    => use non-imputed values to train and assess error initially.
 "
+vehicle_data$missed=vehicle_data2[-which(is.na(vehicle_data2$ABI__8_Digit_)),]$missed
+# Assess distribution of imputated/predicted values:
+plot1 = ggplot(data=vehicle_data,aes(x=Vehicle_Length,fill=missed))+geom_density(alpha=0.4)+
+  scale_fill_brewer(palette="Set3") +labs(x="Vehicle Length")+theme_minimal()+
+  theme(legend.position = "none")
+plot2 = ggplot(data=vehicle_data,aes(x=Vehicle_MPG,fill=missed))+geom_density(alpha=0.4)+
+  scale_fill_brewer(palette="Set3") +labs(x="Vehicle MPG")+theme_minimal()+
+  theme(legend.position = "none")
+plot3 = ggplot(data=vehicle_data,aes(x=Vehicle_Power_to_Weight_Ratio,fill=missed))+
+  geom_density(alpha=0.4)+
+  scale_fill_brewer(palette="Set3") +labs(x="Vehicle P2WR")+theme_minimal()
+# Plot together on a grid
+grid.arrange(
+  plot1,plot2,plot3,
+  nrow = 1,
+  top = "Assess how imputation has affected distribution"
+)
+"
+imputed vehicle lengths distributed about the group means as expected (group=no.doors)
+imputed Vehicle-MPG is has been heavily skewed towards the mean,
+imputed power to weight ratio is almost perfectly distributed as non-missing data
+
+Improvement:
+  Model power to weight ratio (P2WR) as before, but without MPG. Then model MPG as before but with the addition
+  of the P2WR variable. Average the predicted mpg and P2WR variables.
+  ... and further ...
+  i.e. model (MPG,Length, P2WR) ~ multivariate_gaussian(mean,var-cov).
+"
+
 length(intersect(missing_ids,which(is.na(vehicle_data$Premium))))
 # 394 entries have missing (imputed) feature values and missing premium.
 length(which(is.na(vehicle_data$Premium)))-394
 # This leaves 3636 entries that can be predicted using non-imputed feature values.
+# missing feature and not missing premium:
+length(intersect(missing_ids,which(!is.na(vehicle_data$Premium))))
+# 1634 premiums are not missing but have missing features.
+length(union(missing_ids,which(is.na(vehicle_data$Premium))))
+5664/20112
+# 5664 entries have missing premium and features, this is 28% of the data, i.e. a lot.
+non_valid_ids = as.numeric(union(missing_ids,which(is.na(vehicle_data$Premium))))
 
 "
 This is important to know because we need to be able to assess how much effect the imputed values
 has on the predicted premium.
+
+I want to use Support Vector Machines to try to predict Premium, this requires manual k-fold-CV
 "
+#remove entries with missing premium & features.
+shuffled_data = vehicle_data[-non_valid_ids,]
+#Randomly shuffle the data
+shuffled_data=shuffled_data[sample(nrow(shuffled_data)),]
+#Create 4 equally size folds (creates test size roughly equal to number of missing premiums)
+folds = cut(seq(1,nrow(shuffled_data)),breaks=9,labels=F)
 
+#Perform 4 fold cross validation
+cv.errs.prem = rep(0,4)
+for(i in 1:4){
+  #Segement your data by fold using the which() function 
+  testIndexes = which(folds==i,arr.ind=TRUE)
+  testData = shuffled_data[testIndexes, ]
+  trainData = shuffled_data[-testIndexes, ]
+  svm_premium = svm(Premium~.-ABI__8_Digit_-Vehicle_Model-P2W.v2,
+                    data=trainData,
+                    type="eps-regression",
+                    kernel="linear")
+  pred_premium = predict(svm_premium,newdata=testData)
+  cv.errs.prem[i]=(sum((pred_premium-testData$Premium)^2)/nrow(testData))
+}
+svm_premium$SV
+sqrt(sum(cv.errs.prem)/4)
+"
+Even without addition of any imputed values we get a 4-fold cross validated root mean squared error of 86.29757.
+CON - this method is coputationally expensive and time consuming.
+Let's see if previous regression methods outperform SVM.
+As before, lasso regression can perform variable selection so let's try, but repeat 5 times since fold are small in number:
+"
+set.seed(1)
+train.control2 <- trainControl(method = "repeatedcv", number = 4, repeats = 5)
+large_lasso2<- train(Premium~.-ABI__8_Digit_-Vehicle_Model-P2W.v2,
+                    data=vehicle_data[-non_valid_ids,],
+                    method = "lasso",
+                    trControl = train.control2,
+                    na.action = na.exclude)
+# Fails to fit model for many folds with fraction=0.9
+plot(large_lasso2)
+large_lasso2$results$RMSESD
+# However, at fraction=0.5, the RMSE is ≈ 86 which is lower than SVM and computationally this method
+# is much more efficient. Also the cv is repeated, so the RMSE is more accurate than that of the SVM model.
 
+# Let's fit the lasso model to the data with imputed values included
+set.seed(1)
+large_lasso_with_imputed=train(Premium~.-ABI__8_Digit_-Vehicle_Model-P2W.v2,
+                               data=vehicle_data[-na_premium,],
+                               method = "lasso",
+                               trControl = train.control2,
+                               na.action = na.exclude)
+large_lasso_with_imputed$results$RMSE
+large_lasso_with_imputed$results$RMSESD
+plot(large_lasso_with_imputed)
+# As expected, there is an increase in the RMSE due to imputed values.
 
+# Finally, let's try without brand feature:
+set.seed(1)
+large_lasso_with_imputed_no_brand=train(Premium~.-ABI__8_Digit_-Vehicle_Model-P2W.v2-Vehicle_Brand,
+                                        data=vehicle_data[-na_premium,],
+                                        method = "lasso",
+                                        trControl = train.control2,
+                                        na.action = na.exclude)
+large_lasso_with_imputed_no_brand$results$RMSE
+large_lasso_with_imputed_no_brand$results$RMSESD
+plot(large_lasso_with_imputed_no_brand)
+plot(large_lasso_with_imputed_no_brand$finalModel)
+"
+PROS: 
+  The model can be fitted for all fractions,
+  Computationally much quicker & negligable difference in RMSE compared to the previous lasso regression.
+Predict Premiums:
+"
+pred_prem = predict(large_lasso_with_imputed_no_brand,newdata = vehicle_data[na_premium,])
+na_ids = intersect(names(pred_prem),na_premium)
+vehicle_data[na_ids,]$Premium=round(pred_prem,1)
+
+# Finally delete the eronious NA's that have plagued our data:
+vehicle_data=vehicle_data[-which(is.na(vehicle_data$ABI__8_Digit_)),]
 
 
 
