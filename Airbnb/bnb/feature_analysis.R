@@ -3,6 +3,7 @@ View(bnb_data)
 attach(bnb_data)
 sapply(bnb_data,class)
 
+nrow(bnb_data)
 #Change date of last review -> as date
 bnb_data[,13] = as.Date(bnb_data[,13])
 
@@ -204,13 +205,10 @@ colnames(a3)[3]="Median_Price"
 colnames(a3)[4]="Frequency"
 
 library(dplyr)
-summary(a3[,4])#cutoff freq=10 (lower quartile)
 a4 = a3[a3[,4]>10,]
 
 #Top ten most expensive nbhds (median), with at least 10 listings:
-tail(a4[order(a4[,3]),],n=10)
-l=c("Tribeca","NoHo","Flatiron District","Midtown","West Village","Financial District","SoHo",
-    "Chelsea","Greenwich Village","Battery Park City")
+l = as.character(tail(a4[order(a4[,3]),],n=10)$neighbourhood)
 prop.table(table(bnb_data[bnb_data$neighbourhood %in% l,]$room_type))
 
 ggmap(map)+geom_point(data=bnb_data[bnb_data$neighbourhood %in% l,],
@@ -220,9 +218,7 @@ ggmap(map)+geom_point(data=bnb_data[bnb_data$neighbourhood %in% l,],
   labs(x="Longitude",y="Latitude",title="Top 10 most expensive neighbourhoods")
 
 #Top ten cheapest nbhds (median), with at least 10 listings:
-head(a4[order(a4[,3]),],n=10)
-l2=c("Concord","Corona","Hunts Point","Tremont","Soundview","Whitestone","Bronxdale","Van Nest",
-     "Morris Heights","Woodhaven")
+l2 = as.character(head(a4[order(a4[,3]),],n=10)$neighbourhood)
 prop.table(table(bnb_data[bnb_data$neighbourhood %in% l2,]$room_type))
 ggmap(map)+geom_point(data=bnb_data[bnb_data$neighbourhood %in% l2,],
                       aes(x=longitude,y=latitude,fill=neighbourhood,shape=room_type))+
