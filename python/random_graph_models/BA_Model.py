@@ -1,3 +1,7 @@
+# The Barabasi–Albert (BA) algorithm generates random scale-free networks using a preferential attachment
+# mechanism for adding nodes. That is, nodes with higher in-degrees are preferential, for this reason the model
+# is also known as the rich get richer approach.
+
 import graph
 import dijkstra
 from scipy import stats
@@ -5,9 +9,10 @@ import numpy as np
 import random
 
 
+# Function that initialises a directed BA Model with n0 nodes.
+# Each node has (in & out) degree 2, being connected to its left and right neighbors in a circular layout.
 def initialise(n0):
     g_dict = {i: [] for i in range(1, n0+1)}
-    # Each node has edges to its (immediate) left and right neighbour
     for i in range(1, n0+1):
         if i == 1:
             g_dict[i].append(n0)
@@ -21,6 +26,7 @@ def initialise(n0):
     return graph.Graph(g_dict)
 
 
+# Function that adds nodes using preferential attachment mechanism
 def add_node(g, n_edges):
     # Generate degree distribution
     degree_dist = g.get_in_degree_dist()
@@ -33,7 +39,7 @@ def add_node(g, n_edges):
     new_node = nodes.max()+1
     g.add_vertex(new_node)
     edges = g.edges()
-    # Use the pmf to generate neighbour nodes (nodes with higher degrees are preferential)
+    # Use the pmf to generate neighbour nodes (nodes with higher in-degrees are preferential)
     for _ in range(n_edges):
         while True:
             neighbour = pmf.rvs()
@@ -44,13 +50,14 @@ def add_node(g, n_edges):
 
 
 def main():
-    # Initialise graph with 10 nodes & 10 edges
+    # Initialise graph with 10 nodes
     g = initialise(10)
-    # Add new 10 nodes successively, each with 1<edges<5
+    # Add new nodes successively, each with random out-degree.
     for _ in range(5):
         x = random.randint(1, 5)
         add_node(g, x)
-    print(g.avg_path_length())
+    #
+    print(g.eccentricity())
 
 
 if __name__ == "__main__":

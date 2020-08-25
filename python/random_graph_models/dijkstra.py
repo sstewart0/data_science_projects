@@ -1,6 +1,10 @@
+# Dijkstra's algorithm computes the shortest paths from a given start node to all
+# other nodes in the graph
+
 import numpy as np
 
 
+# Function to find index of node with minimum distance from start node
 def find_min(q, arr):
     mini = 999999
     min_node = 0
@@ -11,6 +15,7 @@ def find_min(q, arr):
     return min_node
 
 
+# Function that performs dijkstra's algorithm on graph object and returns distances matrix
 def dijkstra(g):
     nodes = g.gdict.keys()
     vertices = np.array([node for node in nodes], dtype=int)
@@ -19,7 +24,6 @@ def dijkstra(g):
     for start in vertices:
         q = np.array([start], dtype=int)
         for vertex in vertices:
-            # Nodes are integers from 1 to (n+1)
             dist[start-1][vertex-1] = -1
             if vertex != start:
                 q = np.append(q, [vertex])
