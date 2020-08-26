@@ -9,7 +9,7 @@ import numpy as np
 import random
 
 
-# Function that initialises a directed BA Model with n0 nodes.
+# Function that initialises an UNDIRECTED BA Model with n0 nodes.
 # Each node has (in & out) degree 2, being connected to its left and right neighbors in a circular layout.
 def initialise(n0):
     g_dict = {i: [] for i in range(1, n0+1)}
@@ -38,26 +38,45 @@ def add_node(g, n_edges):
     # Create new node to attach neighbours to
     new_node = nodes.max()+1
     g.add_vertex(new_node)
-    edges = g.edges()
+    edges = sorted(g.edges(), key=lambda tup: (tup[0], tup[1]))
     # Use the pmf to generate neighbour nodes (nodes with higher in-degrees are preferential)
     for _ in range(n_edges):
         while True:
             neighbour = pmf.rvs()
-            if (new_node, neighbour) not in edges:
-                g.add_edge((new_node, neighbour))
+            (a, b) = tuple(sorted([neighbour, new_node]))
+            if (a, b) not in edges:
+                # Edges are undirected so each node is the others neighbour
+                g.add_edge((a, b))
+                g.add_edge((b, a))
+                edges = sorted(g.edges(), key=lambda tup: (tup[0], tup[1]))
                 break
     return g
 
 
 def main():
-    # Initialise graph with 10 nodes
-    g = initialise(10)
-    # Add new nodes successively, each with random out-degree.
-    for _ in range(5):
-        x = random.randint(1, 5)
+    # Initialise graph with X nodes & X edges
+    print("The Barabasi–Albert (BA) algorithm generates random scale-free networks \nusing a preferential attachment "
+          "mechanism for adding nodes. \nThat is, nodes with higher in-degrees are preferential, \n"
+          "for this reason the model is also known as the rich get richer approach.")
+    g = initialise(int(input("Enter number of nodes to initialise BA model with: ")))
+    # Add new nodes successively, each with random degree.
+    for i in range(int(input("Enter number of iterations: "))):
+        num_nodes = len(g.get_vertices())
+        x = random.randint(1, num_nodes-1)
         add_node(g, x)
-    #
-    print(g.eccentricity())
+        print("Hub score for nodes at time", i, " \n= ", g.hub_score())
+    print("High degree hubs begin to emerge as expected.")
+    print("Graph vertices = ", g.get_vertices())
+    print("Graph edges = ", g.edges())
+    print("Average path length of graph = ", g.avg_path_length())
+    print("Eccentricity for all nodes = ", g.eccentricity())
+    print("Radius of graph = ", g.radius())
+    print("Diameter of graph = ", g.diameter())
+    print("Efficiency of graph = ", g.efficiency())
+    print("Eccentricity centrality for all nodes = ", g.eccentricity_centrality())
+    print("Closeness centrality for all nodes = ", g.closeness_centrality())
+    print("Adjacency matrix of graph = \n", g.adjacency_matrix(undirected=True))
+    print("Transitivity (global cluster co-eff) of graph = ", g.transitivity(undirected=True))
 
 
 if __name__ == "__main__":
