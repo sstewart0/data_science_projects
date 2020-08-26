@@ -1,6 +1,9 @@
 import numpy as np
 import powIter
 import dijkstra
+import networkx as nx
+import matplotlib.pyplot as plt
+from operator import itemgetter
 
 
 class Graph:
@@ -197,3 +200,22 @@ class Graph:
         for key in degree_dist.keys():
             degree_dist[key] /= tot_degree
         return degree_dist
+
+    # Function to draw/plot the graph/network
+    def draw_ba_model(self):
+        # Build networkx graph
+        g = nx.Graph()
+        nodes = self.gdict.keys()
+        edges = self.edges()
+        g.add_nodes_from(nodes)
+        g.add_edges_from(edges)
+        # Get node degrees
+        node_and_degree = g.degree()
+        node_sizes = np.array([degree**2 for (node, degree) in node_and_degree], dtype=int)
+        # Create circular layout
+        pos = nx.spring_layout(g)
+        nx.draw(g, pos, node_color="b", with_labels=False)
+        # Intensity of node colour dependent on node degree (i.e. higher degree => darker colour)
+        options = {"nodelist": nodes, "node_color": node_sizes, "cmap": plt.cm.Blues}
+        nx.draw_networkx_nodes(g, pos, **options)
+        plt.show()
