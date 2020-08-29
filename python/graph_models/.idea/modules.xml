@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/richGetRicher.iml" filepath="$PROJECT_DIR$/.idea/richGetRicher.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/graph_models.iml" filepath="$PROJECT_DIR$/.idea/graph_models.iml" />
     </modules>
   </component>
 </project>

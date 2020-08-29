@@ -3,7 +3,6 @@ import powIter
 import dijkstra
 import networkx as nx
 import matplotlib.pyplot as plt
-from operator import itemgetter
 
 
 class Graph:
@@ -175,6 +174,17 @@ class Graph:
         AAT = adj_t.dot(adj)
         return powIter.power_iteration(AAT)
 
+    # Function to get diagonal degree matrix
+    def degree_matrix(self):
+        nodes = self.gdict
+        n = len(nodes)
+        degree = np.zeros((n, n), dtype=int)
+        for i, node in enumerate(nodes):
+            edges = nodes[node]
+            degree_i = len(edges)
+            degree[i][i] = degree_i
+        return degree
+
     # In undirected graphs {degree = in-degree = out-degree}
     # Function returns the out-degree distribution of the graph
     def get_out_degree_dist(self):
@@ -201,21 +211,22 @@ class Graph:
             degree_dist[key] /= tot_degree
         return degree_dist
 
-    # Function to draw/plot the graph/network
-    def draw_ba_model(self):
-        # Build networkx graph
-        g = nx.Graph()
-        nodes = self.gdict.keys()
-        edges = self.edges()
-        g.add_nodes_from(nodes)
-        g.add_edges_from(edges)
-        # Get node degrees
-        node_and_degree = g.degree()
-        node_sizes = np.array([degree**2 for (node, degree) in node_and_degree], dtype=int)
-        # Create circular layout
-        pos = nx.spring_layout(g)
-        nx.draw(g, pos, node_color="b", with_labels=False)
-        # Intensity of node colour dependent on node degree (i.e. higher degree => darker colour)
-        options = {"nodelist": nodes, "node_color": node_sizes, "cmap": plt.cm.Blues}
-        nx.draw_networkx_nodes(g, pos, **options)
-        plt.show()
+    # Function to draw the network
+    def draw_network(self, model):
+        if model == "BA":
+            # Build networkx graph
+            g = nx.Graph()
+            nodes = self.gdict.keys()
+            edges = self.edges()
+            g.add_nodes_from(nodes)
+            g.add_edges_from(edges)
+            # Get node degrees
+            node_and_degree = g.degree()
+            node_sizes = np.array([degree**2 for (node, degree) in node_and_degree], dtype=int)
+            # Create circular layout
+            pos = nx.spring_layout(g)
+            nx.draw(g, pos, node_color="b", with_labels=False)
+            # Intensity of node colour dependent on node degree (i.e. higher degree => darker colour)
+            options = {"nodelist": nodes, "node_color": node_sizes, "cmap": plt.cm.Blues}
+            nx.draw_networkx_nodes(g, pos, **options)
+            plt.show()
