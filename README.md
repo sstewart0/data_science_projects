@@ -11,10 +11,10 @@ Python:
 4. Graph object: Directed/undirected graph object with functions to compute topological properties of graph. Compute kernel matrix using some symmetric positive semi-definite similarity matrix (usually adjacency matrix or laplacian matrix) in kernels.py.
 
 Simulations:
-1. Manually producing prediction intervals from simlated data.
+1. Manually producing prediction intervals from simulated data.
 
 Spam:
-1. Testing caret package for cross-validation to compare linear model.
+1. Using the caret package in R (for cross-validation) to compare linear models.
 
 Titanic:
 1. AIM: Predicting the survival of passengers,
