@@ -16,5 +16,14 @@ Simulations:
 Spam:
 1. Testing caret package for cross-validation to compare linear model.
 
+Titanic:
+1. AIM: Predicting the survival of passengers,
+2. Feature engineering, data analysis & visualisation, data imputation & machine learning methods in R
 
+Vehicle:
+1. Tasks: Fill missing data & predict missing premiums
+2. Data analysis & visualisation, data imputation & machine learning methods in R
 
+Wine Data:
+1. AIM: Predict quality of wines using various physiochemical properties of red & white wines
+2. Data analysis & visualisation & machine learning methods in R
