@@ -72,7 +72,7 @@ def main():
         x = random.randint(1, num_nodes-1)
         add_node(g, x)
         # print("Hub score for nodes at time", i, " \n= ", g.hub_score())
-    print("High degree hubs begin to emerge as expected.")
+    """print("High degree hubs begin to emerge as expected.")
     print("Graph vertices = ", g.get_vertices())
     print("Graph edges = ", g.edges())
     print("Average path length of graph = ", g.avg_path_length())
@@ -83,7 +83,7 @@ def main():
     print("Eccentricity centrality for all nodes = ", g.eccentricity_centrality())
     print("Closeness centrality for all nodes = ", g.closeness_centrality())
     print("Adjacency matrix of graph = \n", g.adjacency_matrix(undirected=True))
-    print("Transitivity (global cluster co-eff) of graph = ", g.transitivity(undirected=True))
+    print("Transitivity (global cluster co-eff) of graph = ", g.transitivity(undirected=True))"""
     g.draw_network(model="BA")
 
 

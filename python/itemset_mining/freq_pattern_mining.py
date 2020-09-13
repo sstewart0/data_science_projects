@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from mlxtend.frequent_patterns import apriori, fpgrowth
 from mlxtend.preprocessing import TransactionEncoder
 from itertools import chain, permutations
@@ -21,6 +22,11 @@ transaction_data = [['A', 'B', 'C', 'D'],
                     ['D', 'F', 'G'],
                     ['A', 'B', 'G'],
                     ['C', 'D', 'F', 'G']]
+
+# Create the pandas dataframe as described above
+te = TransactionEncoder()
+binary_data = te.fit(transaction_data).transform(transaction_data)
+pandas_df = pd.DataFrame(binary_data, columns=te.columns_)
 
 # Data for Q4: association rules
 transaction_data2 = [['A', 'C', 'D'],
@@ -48,10 +54,10 @@ def antecedents(freq_itemset):
 
 
 # Produce power set of itemset
-def power_set(itemset):
+def power_set(itemset, min_length=1, rev = False):
     s = list(itemset)
-    return sorted(chain.from_iterable(combinations(s, r) for r in range(1, len(s)+1)),
-                  key=lambda x: len(x))
+    return sorted(chain.from_iterable(combinations(s, r) for r in range(min_length, len(s)+1)),
+                  key=lambda x: len(x), reverse=rev)
 
 
 # Function to calculate support:
@@ -90,12 +96,27 @@ def association_rules(freq_itemset, full_itemset, minconf):
             result.append([a, overlap, round(conf, 2)])
     return result
 
+# Relational Database frequent pattern mining:
+# Some example data to use
+relational_data = {
+    'A':[1,2,2,2,2,3],
+    'B':[1,3,3,1,3,3],
+    'C':[1,2,3,1,3,3]
+}
+pd_rd_data = pd.DataFrame(data=relational_data)
 
-# Create the pandas dataframe as described above
-te = TransactionEncoder()
-binary_data = te.fit(transaction_data).transform(transaction_data)
-pandas_df = pd.DataFrame(binary_data, columns=te.columns_)
 
+# A naive method
+"""def freq_pattern_rd(data):
+    valid_tuples = {}
+    cols = list(data.columns)
+    patterns = [[col]+(list(set(data[col]))) for col in cols]
+    for i in range(len(patterns)):
+        for j in range(len(patterns)-i-1):
+            Q1 = np.array(patterns[i][1:])
+            Q2 = np.array(patterns[i+j+1][1:])
+            while (len(Q1)>0) and (len(Q2)>0):
+    return 0"""
 
 # Apply apriori & fpgrowth to the pandas dataframe
 def main():
