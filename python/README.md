@@ -15,3 +15,6 @@ Itemset_mining:
 Iris_data:
 1. Pairwise similarities between data points calculated using a radial-basis-function kernel which are used as the weights for edges between nodes
 in graphing the data. (networkx, plotly)
+
+Tweets:
+1. Perform sentiment analysis on tweets
