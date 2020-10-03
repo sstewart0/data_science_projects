@@ -84,7 +84,7 @@ def main():
     print("Closeness centrality for all nodes = ", g.closeness_centrality())
     print("Adjacency matrix of graph = \n", g.adjacency_matrix(undirected=True))
     print("Transitivity (global cluster co-eff) of graph = ", g.transitivity(undirected=True))"""
-    g.draw_network(model="BA")
+    g.draw_network(model="BA", interactive=True)
 
 
 if __name__ == "__main__":

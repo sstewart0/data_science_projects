@@ -3,6 +3,7 @@ import powIter
 import dijkstra
 import networkx as nx
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 
 class Graph:
@@ -211,22 +212,109 @@ class Graph:
             degree_dist[key] /= tot_degree
         return degree_dist
 
+    # Draw an interactive network using plotly
+    def draw_interactive_network(self, model):
+        # Create graph
+        G = nx.Graph()
+        nodes = self.gdict.keys()
+        edges = self.edges()
+        G.add_nodes_from(nodes)
+        G.add_edges_from(edges)
+
+        # Layout for nodes
+        pos = nx.spring_layout(G)
+
+        # Create edge trace
+        edge_x = []
+        edge_y = []
+        for edge in G.edges():
+            char_1 = edge[0]
+            char_2 = edge[1]
+            x0, y0 = pos[char_1]
+            x1, y1 = pos[char_2]
+            edge_x.append(x0)
+            edge_x.append(x1)
+            edge_x.append(None)
+            edge_y.append(y0)
+            edge_y.append(y1)
+            edge_y.append(None)
+
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=0.5, color='#888'),
+            hoverinfo='none',
+            mode='lines')
+
+        # Create node trace
+        node_x = []
+        node_y = []
+        for node in G.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers',
+            hoverinfo='text',
+            marker=dict(
+                showscale=True,
+                colorscale='YlGnBu',
+                reversescale=True,
+                color=[],
+                size=10,
+                colorbar=dict(
+                    thickness=15,
+                    title='Node Connections',
+                    xanchor='left',
+                    titleside='right'
+                ),
+                line_width=2))
+
+        node_adjacencies = []
+        node_text = []
+        for node, adjacencies in enumerate(G.adjacency()):
+            node_adjacencies.append(len(adjacencies[1]))
+            node_text.append('# of connections: ' + str(len(adjacencies[1])))
+
+        node_trace.marker.color = node_adjacencies
+        node_trace.text = node_text
+
+        fig = go.Figure(data=(edge_trace, node_trace),
+                        layout=go.Layout(
+                            title='Barabasi-Albert Scale-Free Random Graph',
+                            titlefont_size=16,
+                            showlegend=False,
+                            hovermode='closest',
+                            margin=dict(b=20, l=5, r=5, t=40),
+                            annotations=[dict(
+                                showarrow=False,
+                                xref="paper", yref="paper",
+                                x=0.005, y=-0.002)],
+                            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                        )
+        fig.show()
+
     # Function to draw the network
-    def draw_network(self, model):
-        if model == "BA":
-            # Build networkx graph
-            g = nx.Graph()
-            nodes = self.gdict.keys()
-            edges = self.edges()
-            g.add_nodes_from(nodes)
-            g.add_edges_from(edges)
-            # Get node degrees
-            node_and_degree = g.degree()
-            node_sizes = np.array([degree**2 for (node, degree) in node_and_degree], dtype=int)
-            # Create circular layout
-            pos = nx.spring_layout(g)
-            nx.draw(g, pos, node_color="b", with_labels=False)
-            # Intensity of node colour dependent on node degree (i.e. higher degree => darker colour)
-            options = {"nodelist": nodes, "node_color": node_sizes, "cmap": plt.cm.Blues}
-            nx.draw_networkx_nodes(g, pos, **options)
-            plt.show()
+    def draw_network(self, model,interactive=False):
+        if interactive:
+            self.draw_interactive_network(model)
+        else:
+            if model == "BA":
+                # Build networkx graph
+                g = nx.Graph()
+                nodes = self.gdict.keys()
+                edges = self.edges()
+                g.add_nodes_from(nodes)
+                g.add_edges_from(edges)
+                # Get node degrees
+                node_and_degree = g.degree()
+                node_sizes = np.array([degree**2 for (node, degree) in node_and_degree], dtype=int)
+                # Create circular layout
+                pos = nx.spring_layout(g)
+                nx.draw(g, pos, node_color="b", with_labels=False)
+                # Intensity of node colour dependent on node degree (i.e. higher degree => darker colour)
+                options = {"nodelist": nodes, "node_color": node_sizes, "cmap": plt.cm.Blues}
+                nx.draw_networkx_nodes(g, pos, **options)
+                plt.show()
