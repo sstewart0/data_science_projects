@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
-from keras import Sequential, initializers, regularizers
-from tensorflow.keras import layers
+from keras import Sequential, initializers, regularizers, layers
 
 
 train_csv = pd.read_csv('./house-prices-advanced-regression-techniques/train.csv')

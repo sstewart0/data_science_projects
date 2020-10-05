@@ -68,14 +68,22 @@ def clean(data):
     return data
 
 # Create train, test data
-def train_test(x, y, size):
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=size, random_state=42)
+def train_test(x, y, t_size=.25, validation_size=.25):
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=t_size, random_state=1)
+
+    val_size = round((1-t_size)*validation_size,2)
+    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=val_size, random_state=1)
+
     train = pd.concat([x_train, y_train], axis=1)
     test = pd.concat([x_test, y_test], axis=1)
-    return train, test
+    validate = pd.concat([x_val, y_val], axis=1)
+
+    return train, test, validate
+
 
 sample = "@nationwid4eclass no, 44 it's not 3behaving at all." \
          " i'm mad4. why am4 i here? becau4se I can't see you all o..."
+
 def main():
     text = remove_html_mentions(sample)
     text = remove_punctuation(text)
