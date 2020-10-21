@@ -67,8 +67,8 @@ def clean(data):
     data = data.apply(lambda x: stem_words(x))
     return data
 
-# Create train, test data
-def train_test(x, y, t_size=.25, validation_size=.25):
+# Create train, test & validation data
+def train_test_validate(x, y, t_size=.25, validation_size=.25):
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=t_size, random_state=1)
 
     val_size = round((1-t_size)*validation_size,2)
