@@ -287,6 +287,15 @@ ggmap(map)+geom_point(data=bnb_data[((bnb_data$host_id %in% l3) & bnb_data$calcu
   guides(fill = guide_legend(override.aes=list(shape=21)))+
   labs(x="Longitude",y="Latitude",title="Hosts with between 10 and 50 listings")
 
+#Map of hosts with  10<listings<50
+ggmap(map)+geom_point(data=bnb_data[(bnb_data$host_id %in% l3),],
+                      aes(x=longitude,y=latitude,shape=room_type,fill=neighbourhood_group),size=2)+
+  scale_shape_manual(values=c(21,22,23))+
+  theme_minimal()+scale_fill_brewer(palette="Set3")+
+  guides(fill = guide_legend(override.aes=list(shape=21)))+
+  labs(x="Longitude",y="Latitude",title="Hosts with more than 10 listings.")
+
+
 #Any trends in hosts with >10 listings?
 tycoons = bnb_data[bnb_data$host_id %in% l3,]
 summary(tycoons)
@@ -499,7 +508,7 @@ myDF = melt(myDF,id.vars = "neighbourhood",variable.name = "AKA")
 #Plot popularity of the named areas used to describe neighbourhoods
 ggplot(myDF[myDF$value>0,],aes(neighbourhood,value))+
   geom_point(aes(alpha=value),shape=21,fill="pink")+
-  geom_text_repel(aes(label = ifelse(value >0.3, as.character(AKA),"")))+
+  geom_text_repel(aes(label = ifelse(value >0.3, as.character(AKA),"")))+theme_minimal()+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
   labs(x="Neighbourhood",y="%",title="Popularity of the named areas used to describe neighbourhoods")
 

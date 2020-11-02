@@ -25,17 +25,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Read streaming history(sh) json files into a pandas dataframe
-path_to_json = './MyData/'
-json_files = [sh for sh in os.listdir(path_to_json) if sh.startswith('StreamingHistory')]
+def get_data(path_to_json = './MyData/'):
+    json_files = [sh for sh in os.listdir(path_to_json) if sh.startswith('StreamingHistory')]
 
-streaming_history = pd.DataFrame(columns=['endTime', 'artistName', 'trackName', 'msPlayed'])
+    streaming_history = pd.DataFrame(columns=['endTime', 'artistName', 'trackName', 'msPlayed'])
 
-for js in json_files:
-    with open(os.path.join(path_to_json, js)) as json_file:
-        json_text = pd.read_json(json_file)
-        streaming_history = pd.concat([streaming_history, json_text])
+    for js in json_files:
+        with open(os.path.join(path_to_json, js)) as json_file:
+            json_text = pd.read_json(json_file)
+            streaming_history = pd.concat([streaming_history, json_text])
 
-streaming_history['endTime'] = pd.to_datetime(streaming_history['endTime'])
+    streaming_history['endTime'] = pd.to_datetime(streaming_history['endTime'])
+
+    return streaming_history
 
 
 def get_top_songs(data):
@@ -43,11 +45,14 @@ def get_top_songs(data):
     df = pd.DataFrame({'count': grouped_df.size(),
                        'total_ms_played': grouped_df.agg({'msPlayed': 'sum'})['msPlayed']}
                       ).reset_index()
-    return df.sort_values('total_ms_played', ascending=False)
+    return df.sort_values('total_ms_played', ascending=False).head(10)
 
 
 """# Test get top songs
 print(get_top_songs(streaming_history).head(5))"""
+
+def ms_to_time(data):
+    return data.apply(lambda x: datetime.timedelta(milliseconds=x))
 
 
 def get_top_artists(data):
@@ -57,7 +62,7 @@ def get_top_artists(data):
             total_ms_played=grouped_df.agg({'msPlayed': 'sum'})['msPlayed']
         )
     ).reset_index()
-    df['total_ms_played'] = df['total_ms_played'].apply(lambda x: datetime.timedelta(milliseconds=x))
+    df['total_ms_played'] = ms_to_time(df['total_ms_played'])
     df.columns = ['artist', 'time_played']
     return df.sort_values('time_played', ascending=False)
 
@@ -91,10 +96,9 @@ print(streaming_history[['trackName','artistName']].head(40))
 print(streaming_history[['trackName','artistName']].head(40).
       apply(lambda x: get_genius_url_format(x[0],x[1]), axis=1))"""
 
-
 # Get song artwork
 def get_genius_image(entry):
-    artistName, trackName = entry[1], entry[2]
+    trackName, artistName = entry[0], entry[1]
     url = 'https://genius.com/' + get_genius_url_format(trackName, artistName) + '-lyrics'
     page = requests.get(url)
     soup = BeautifulSoup(page.text, features="html.parser")
@@ -146,8 +150,8 @@ def get_day_data(data):
         else:
             day_count[day] = 1
     count = np.array([c for c in day_count.values()])
-    data['endTime'] = data['endTime'].apply(lambda x: datetime.datetime.weekday(x))
-    grouped_by_day = data.groupby(['endTime'])
+    data['weekday'] = data['endTime'].apply(lambda x: datetime.datetime.weekday(x))
+    grouped_by_day = data.groupby(['weekday'])
     day_data = pd.DataFrame(dict(
         total_ms_played=grouped_by_day.agg({'msPlayed': 'sum'})['msPlayed']
     )).reset_index()
@@ -159,20 +163,37 @@ def get_day_data(data):
 def get_hour(time):
     return int(str(time).split(':')[0])
 
-BINS = {i:0 for i in range(0,24)}
 
-# average of
 def get_time_data(data):
-    data['endTime'] = data['endTime'].apply(lambda x: datetime.datetime.time(x))
-    data['endTime'] = data['endTime'].apply(lambda x: get_hour(x))
+    data['time'] = data['endTime'].apply(lambda x: datetime.datetime.time(x))
+    data['time'] = data['time'].apply(lambda x: get_hour(x))
     data['msPlayed'] = pd.to_numeric(data['msPlayed'])
-    grouped_by_time = data.groupby(['endTime'])
-    time_data = pd.DataFrame(dict(
-        total_ms_played=grouped_by_time.agg({'msPlayed':'sum'})['msPlayed']
-    )).reset_index()
+    grouped_by_time = data.groupby(['time'])
+    time_data = pd.DataFrame(
+        dict(
+            total_ms_played=grouped_by_time.agg({'msPlayed':'sum'})['msPlayed']
+        )
+    ).reset_index()
     return time_data
 
-print(get_time_data(streaming_history))
+"""# Test get time data
+print(get_time_data(streaming_history))"""
+
+def get_artist_picture(artist):
+    artist = artist.replace(' ','-')
+    genius_search = 'https://www.genius.com/artists/' + artist
+    page = requests.get(genius_search)
+    soup = BeautifulSoup(page.text, features='html.parser')
+    images = soup.findAll('img')
+    image_src = images[0]['src']
+    response = requests.get(image_src)
+    return Image.open(BytesIO(response.content))
+
+def save_image(image, fp):
+    image.save(fp=fp,format='png')
+
+
+# Test get artist picture
 
 
 times = np.array([
@@ -182,32 +203,27 @@ times = np.array([
     "18:00-19:00","19:00-20:00","20:00-21:00","21:00-22:00","22:00-23:00","23:00-00:00"
 ])
 
-def plot_time_data(data):
+"""def plot_time_data(data):
     hour_data = get_time_data(data)
-    hours = np.array([count for count in hour_data.values()])
+    hours = np.array([count[1] for index, count in hour_data.iterrows()])
     x = np.arange(len(hours))
     fig, ax = plt.subplots()
     plot = ax.bar(x, hours)
-    ax.set_ylabel('Count')
-    ax.set_title('Times')
+    ax.set_ylabel('Milliseconds')
+    ax.set_xlabel('Time period')
+    ax.set_title('Total listening time in the last year distributed over time')
     ax.set_xticks(x)
     ax.set_xticklabels(times)
     fig.tight_layout()
     plt.xticks(rotation=90)
-    plt.show()
+    plt.show()"""
 
 
 #print(plot_time_data(streaming_history))
 
-# def get_artist_picture(artist):
+def main():
+    stream_data = get_data()
 
 
-"""times = data['endTime'].apply(lambda t: datetime.datetime.time(t))
-    hours = [get_hour(t) for t in times]
-    msPlayed = data['msPlayed'].to_list()
-    hour_data = pd.DataFrame(list(zip(hours, msPlayed)), columns=['hour', 'msPlayed'])
-
-    for index, hour in hour_data.iterrows():
-        BINS[hour[0]] += hour[1]
-
-    return BINS"""
+if __name__ == "__main__":
+    main()

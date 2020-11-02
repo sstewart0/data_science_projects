@@ -26,12 +26,6 @@ STOPWORDS = STOPWORDS - NOTSTOP
 
 # Function to get and save abbreviations in titles:
 def get_abbreviations(col, out, run):
-    """
-    :param col: pandas column of titles
-    :param out: output filename
-    :param run: bool
-    :return: void
-    """
     WORDS = words.words()
     fdist = FreqDist()
     # Create frequency distribution table with words that are not in english vocab:
@@ -93,10 +87,6 @@ separate = re.compile(r"([0-9]+)([a-z]+)")
 
 # Function to separate numbers from words
 def sep_numbers(text):
-    """
-    :param text: string
-    :return: string
-    """
     token = word_tokenize(text)
     for i in range(0, len(token)):
         match = re.match(separate, token[i])
@@ -113,10 +103,6 @@ NUMBERS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
 # Function to change integers to word
 # (must be completed after number's and words have be separated)
 def num_to_word(text):
-    """
-    :param text: string
-    :return: string
-    """
     token = word_tokenize(text)
     for i in range(0, len(token)):
         if (token[i].isdigit()) and (0 < int(token[i]) < 10):
@@ -126,20 +112,12 @@ def num_to_word(text):
 
 # Function to remove whitespace
 def remove_white_space(text):
-    """
-    :param text: string
-    :return: string
-    """
     text = text.replace('  ', ' ')
     return text
 
 
 # Function to perform steps 4 and 5:
 def clean(text):
-    """
-    :param text: string
-    :return: string
-    """
     if type(text) is not float:
         text = text.lower()
         text = REPLACE_BY_SPACE_RE.sub(' ', text)
@@ -157,12 +135,6 @@ def clean(text):
 
 # Create train, test data and save
 def train_test(x, y, size):
-    """
-    :param x: independent variable(s)
-    :param y: dependent variable
-    :param size: test set size
-    :return: void
-    """
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=size, random_state=42)
     train = pd.concat([x_train, y_train], axis=1)
     test = pd.concat([x_test, y_test], axis=1)
@@ -183,7 +155,7 @@ def main():
     # Clean data.
     x = x.apply(clean)
     # Create random train and test set (reproducible)
-    train_test(x, y, 0.15)
+    train_test(x, y, 0.1)
 
 
 if __name__ == "__main__":

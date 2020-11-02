@@ -27,7 +27,7 @@ server = app.server
 with urlopen('https://raw.githubusercontent.com/veltman/snd3/master/data/nyc-neighborhoods.geo.json') as response:
     counties = json.load(response)
 
-# Bnb data with match neighbourhoods
+# Bnb data with matched neighbourhoods
 bnb_data = pd.read_csv('airbnb.csv')
 
 PRICE = [40,60,80,100,120,140,160,180,200]
@@ -57,8 +57,7 @@ app.layout = html.Div(
                             id="choropleth-container",
                             children=[
                                 html.P(
-                                    children="Choropleth map of Airbnb properties in New York\
-                                    with price less than $%s per night." % max(PRICE),
+                                    children="Choropleth map of Airbnb properties in New York.",
                                     id="choropleth-map-title",
                                 ),
                                 dcc.Graph(
@@ -78,11 +77,11 @@ app.layout = html.Div(
                                     id="slider-text",
                                     children="Drag the slider to adjust the price range:",
                                 ),
-                                dcc.Slider(
+                                dcc.RangeSlider(
                                     id="price-slider",
                                     min=min(PRICE),
                                     max=max(PRICE),
-                                    value=max(PRICE),
+                                    value=[min(PRICE),max(PRICE)],
                                     marks={
                                         str(price): {
                                             "label": "$%s" % str(price),
@@ -120,13 +119,13 @@ app.layout = html.Div(
 
 @app.callback(
     Output("county-choropleth", "figure"),
-    [
+        [
         Input("price-slider", "value"),
         Input("room-type-checklist", "value")
     ]
 )
 def display_map(price, roomtypes):
-    price_condition = bnb_data['price'] < price
+    price_condition = bnb_data['price'].between(price[0],price[1], inclusive=True)
 
     room_type_map = {
             "EH":"Entire home/apt",
@@ -148,9 +147,6 @@ def display_map(price, roomtypes):
     # Join the dataframes
     df['price'] = df2['price'].tolist()
 
-    # Min price for slider
-    min_price = min(df['price'])
-
     # Names of neighbourhoods
     names = [name.replace('_', ' ') for name in df['nbhd_ids'].tolist()]
     df['names'] = names
@@ -158,7 +154,7 @@ def display_map(price, roomtypes):
     fig = px.choropleth_mapbox(data_frame=df,
                                geojson=counties,
                                locations='nbhd_ids',
-                               range_color=(min_price,price),
+                               range_color=(price[0],price[1]),
                                color='price',
                                center=dict(lat=40.7,lon=-74),
                                zoom=9.5,
