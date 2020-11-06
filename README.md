@@ -6,9 +6,10 @@ Airbnb:
 
 Python:
 1. Data mining (graph data, itemset mining, ...),
-2. NN Implementation (soon to come ...),
-3. Optimisation algorithms,
-4. 
+2. Data cleaning & feature engineering,
+3. Neural Net building, training & tuning,
+4. Optimisation algorithms,
+5. Web-scraping.
 
 Simulations:
 1. Manually producing prediction intervals from simulated data.
