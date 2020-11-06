@@ -5,11 +5,13 @@ Airbnb:
 2. NLP named entity recognition using Python in Airbnb/bnb/NER.
 
 Python:
-1. Data mining (graph data, itemset mining, ...),
+1. Data mining (e.g. market basket analysis),
 2. Data cleaning & feature engineering,
 3. Neural Net building, training & tuning,
-4. Optimisation algorithms,
-5. Web-scraping.
+4. Interactive dashboard creation,
+5. Web-scraping,
+6. Network modelling & simulation,
+7. Optimisation algorithms.
 
 Simulations:
 1. Manually producing prediction intervals from simulated data.
