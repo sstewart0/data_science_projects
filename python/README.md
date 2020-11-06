@@ -18,3 +18,11 @@ in graphing the data. (networkx, plotly)
 
 Tweets:
 1. Perform sentiment analysis on tweets
+
+Dashboard:
+1. Create an interactive dashboard using dash & plotly in python of Airbnb data in NYC
+
+Spotify:
+1. Downloaded personal streaming history from spotify.
+2. Created functions to scrape relevant information from websites for dashboard creation.
+3. In the process of implementing an interactive dashboard to display data on top artists, genres, songs, etc.
