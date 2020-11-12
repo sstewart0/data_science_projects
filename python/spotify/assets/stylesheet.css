@@ -9,6 +9,8 @@ html {
 p {
     margin-block-start: 0em !important;
     margin-block-end: 0em !important;
+    text-align: center;
+    font-size: 2.5rem;
 }
 
 body {
@@ -42,16 +44,20 @@ body {
     float: left;
 }
 
+#column2 {
+    float: left;
+    flex: 1;
+    padding: 15rem 1rem 10rem 1rem;
+}
+
 #column1 {
     float: left;
     flex: 1;
     padding: 1rem 1rem 1rem 1rem;
 }
 
-#column2 {
-    float: left;
-    flex: 1;
-    padding: 1rem 1rem 1rem 1rem;
+h1,h2 {
+    text-align: center;
 }
 
 #column3 {
@@ -60,26 +66,62 @@ body {
     padding: 1rem 1rem 1rem 1rem;
 }
 
-#list-container {
+.artist-container {
+    float: left;
+    flex: 1;
+    width: 100%;
+}
+
+.list-container {
     display: flex;
     float: left;
     width: 100%;
 }
 
-.list-col {
-    flex: 1;
+.list-col1 {
+    flex: 0 0 20px;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     float: left;
-    width: 50%;
 }
-.song-art-container {
+.list-col2 {
+    flex: 0 0 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    float: left;
+}
+.list-col3 {
+    flex: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    float: left;
+}
+.list-col4 {
+    flex: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    float: left;
+}
+.song-art-container, .artist-art-container {
+    float: left;
     flex: 1;
-    text-align: right;
+    text-align: center;
     height: 7rem;
+    padding: 0rem 0rem .5rem 0rem;
 }
-.song-name-container {
+.song-name-container, .artist-name-container {
+    flex: 1;
+    float: left;
+}
+.song-num-container, .artist-num-container {
+    flex: 1;
+    float: left;
+}
+.song-playtime-container, .artist-playtime-container {
     flex: 1;
     float: left;
 }

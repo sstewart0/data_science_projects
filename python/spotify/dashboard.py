@@ -7,26 +7,17 @@ from dash.dependencies import Input, Output, State
 # Data
 import pandas as pd
 
-# sf = spotify functions
+# spotify functions
 import analysis as sf
 
-# Read data
-stream_data = sf.get_data()
+stream_data = pd.read_csv("./assets/stream_data.csv")
+stream_data['endTime'] = pd.to_datetime(stream_data['endTime'])
 
-top_songs = sf.get_top_songs(stream_data)
+time_data_plot = sf.plot_time_data(stream_data)
+day_data_plot = sf.plot_day_data(stream_data)
 
-def get_top_song_imgs():
-    imgs = []
-    for index, row in top_songs.iterrows():
-        print(index)
-        img = sf.get_genius_image(row)
-        #save image
-        fp = './assets/img{i}.png'.format(i=index)
-        sf.save_image(img, fp)
-        imgs.append(fp)
-    return imgs
-
-images = get_top_song_imgs()
+top_songs = pd.read_csv("./assets/top_songs.csv")
+top_artists = pd.read_csv("./assets/top_artists.csv")
 
 # Initialize app
 app = dash.Dash(
@@ -62,26 +53,280 @@ app.layout = html.Div(
                             # polar plot
                         ),
                         html.Div(
-                            id="artist-container"
-                            # list
+                            className="artist-container",
+                            children=[
+                                html.H1(children="TOP ARTISTS"),
+                                html.Div(
+                                    className="list-container",
+                                    children=[
+                                        html.Div(
+                                            className="list-col1",
+                                            children=[
+                                                html.H2(children="#"),
+                                                html.Div(
+                                                    className="artist-num-container",
+                                                    children=[
+                                                        html.P("1")
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-num-container",
+                                                    children=[
+                                                        html.P("2")
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-num-container",
+                                                    children=[
+                                                        html.P("3")
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-num-container",
+                                                    children=[
+                                                        html.P("4")
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-num-container",
+                                                    children=[
+                                                        html.P("5")
+                                                    ]
+                                                )
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="list-col2",
+                                            children=[
+                                                html.H2(children="ART"),
+                                                html.Div(
+                                                    className="artist-art-container",
+                                                    children=[
+                                                        html.Img(
+                                                            id="image1",
+                                                            src = './assets/artist0.png',
+                                                            style={
+                                                                'max-width':'100%',
+                                                                'max-height':'100%'
+                                                            }
+                                                        )
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-art-container",
+                                                    children=[
+                                                        html.Img(
+                                                            id="image2",
+                                                            src='./assets/artist1.png',
+                                                            style={
+                                                                'max-width': '100%',
+                                                                'max-height': '100%'
+                                                            }
+                                                        )
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-art-container",
+                                                    children=[
+                                                        html.Img(
+                                                            id="image3",
+                                                            src='./assets/artist2.png',
+                                                            style={
+                                                                'max-width': '100%',
+                                                                'max-height': '100%'
+                                                            }
+                                                        )
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-art-container",
+                                                    children=[
+                                                        html.Img(
+                                                            id="image4",
+                                                            src='./assets/artist3.png',
+                                                            style={
+                                                                'max-width': '100%',
+                                                                'max-height': '100%'
+                                                            }
+                                                        )
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-art-container",
+                                                    children=[
+                                                        html.Img(
+                                                            id="image5",
+                                                            src='./assets/artist4.png',
+                                                            style={
+                                                                'max-width': '100%',
+                                                                'max-height': '100%'
+                                                            }
+                                                        )
+                                                    ]
+                                                )
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="list-col3",
+                                            children=[
+                                                html.H2(children="NAME"),
+                                                html.Div(
+                                                    className="artist-name-container",
+                                                    children=[
+                                                        html.P(top_artists['artist'][0])
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="song-name-container",
+                                                    children=[
+                                                        html.P(top_artists['artist'][1])
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="song-name-container",
+                                                    children=[
+                                                        html.P(top_artists['artist'][2])
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="song-name-container",
+                                                    children=[
+                                                        html.P(top_artists['artist'][3])
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="song-name-container",
+                                                    children=[
+                                                        html.P(top_artists['artist'][4])
+                                                    ]
+                                                )
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="list-col4",
+                                            children=[
+                                                html.H2(children="PLAYTIME"),
+                                                html.Div(
+                                                    className="artist-playtime-container",
+                                                    children=[
+                                                        html.P(top_artists['time_played'][0])
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-playtime-container",
+                                                    children=[
+                                                        html.P(top_artists['time_played'][1])
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-playtime-container",
+                                                    children=[
+                                                        html.P(top_artists['time_played'][2])
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-playtime-container",
+                                                    children=[
+                                                        html.P(top_artists['time_played'][3])
+                                                    ]
+                                                ),
+                                                html.Div(
+                                                    className="artist-playtime-container",
+                                                    children=[
+                                                        html.P(top_artists['time_played'][4])
+                                                    ]
+                                                )
+                                            ]
+                                        )
+                                    ]
+                                )
+                            ]
                         )
                     ]
                 ),
                 html.Div(
                     id="column2",
                     children=[
+                        html.H1(children="TOP SONGS"),
                         html.Div(
-                            id="list-container",
+                            className="list-container",
                             children=[
                                 html.Div(
-                                    className="list-col",
+                                    className="list-col1",
                                     children=[
+                                        html.H2(children="#"),
+                                        html.Div(
+                                            className="song-num-container",
+                                            children=[
+                                                html.P("1")
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-num-container",
+                                            children=[
+                                                html.P("2")
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-num-container",
+                                            children=[
+                                                html.P("3")
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-num-container",
+                                            children=[
+                                                html.P("4")
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-num-container",
+                                            children=[
+                                                html.P("5")
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-num-container",
+                                            children=[
+                                                html.P("6")
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-num-container",
+                                            children=[
+                                                html.P("7")
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-num-container",
+                                            children=[
+                                                html.P("8")
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-num-container",
+                                            children=[
+                                                html.P("9")
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-num-container",
+                                            children=[
+                                                html.P("10")
+                                            ]
+                                        )
+                                    ]
+                                ),
+                                html.Div(
+                                    className="list-col2",
+                                    children=[
+                                        html.H2(children="ART"),
                                         html.Div(
                                             className="song-art-container",
                                             children=[
                                                 html.Img(
-                                                    id="image1",
-                                                    src = images[0],
+                                                    id="image11",
+                                                    src = './assets/artwork0.png',
                                                     style={
                                                         'max-width':'100%',
                                                         'max-height':'100%'
@@ -93,8 +338,8 @@ app.layout = html.Div(
                                             className="song-art-container",
                                             children=[
                                                 html.Img(
-                                                    id="image2",
-                                                    src=images[1],
+                                                    id="image12",
+                                                    src='./assets/artwork1.png',
                                                     style={
                                                         'max-width': '100%',
                                                         'max-height': '100%'
@@ -106,8 +351,8 @@ app.layout = html.Div(
                                             className="song-art-container",
                                             children=[
                                                 html.Img(
-                                                    id="image3",
-                                                    src=images[2],
+                                                    id="image13",
+                                                    src='./assets/artwork2.png',
                                                     style={
                                                         'max-width': '100%',
                                                         'max-height': '100%'
@@ -119,8 +364,8 @@ app.layout = html.Div(
                                             className="song-art-container",
                                             children=[
                                                 html.Img(
-                                                    id="image4",
-                                                    src=images[3],
+                                                    id="image14",
+                                                    src='./assets/artwork3.png',
                                                     style={
                                                         'max-width': '100%',
                                                         'max-height': '100%'
@@ -132,8 +377,8 @@ app.layout = html.Div(
                                             className="song-art-container",
                                             children=[
                                                 html.Img(
-                                                    id="image5",
-                                                    src=images[4],
+                                                    id="image15",
+                                                    src='./assets/artwork4.png',
                                                     style={
                                                         'max-width': '100%',
                                                         'max-height': '100%'
@@ -146,7 +391,7 @@ app.layout = html.Div(
                                             children=[
                                                 html.Img(
                                                     id="image6",
-                                                    src=images[5],
+                                                    src='./assets/artwork5.png',
                                                     style={
                                                         'max-width': '100%',
                                                         'max-height': '100%'
@@ -159,7 +404,7 @@ app.layout = html.Div(
                                             children=[
                                                 html.Img(
                                                     id="image7",
-                                                    src=images[6],
+                                                    src='./assets/artwork6.png',
                                                     style={
                                                         'max-width': '100%',
                                                         'max-height': '100%'
@@ -172,7 +417,7 @@ app.layout = html.Div(
                                             children=[
                                                 html.Img(
                                                     id="image8",
-                                                    src=images[7],
+                                                    src='./assets/artwork7.png',
                                                     style={
                                                         'max-width': '100%',
                                                         'max-height': '100%'
@@ -185,7 +430,7 @@ app.layout = html.Div(
                                             children=[
                                                 html.Img(
                                                     id="image9",
-                                                    src=images[8],
+                                                    src='./assets/artwork8.png',
                                                     style={
                                                         'max-width': '100%',
                                                         'max-height': '100%'
@@ -198,7 +443,7 @@ app.layout = html.Div(
                                             children=[
                                                 html.Img(
                                                     id="image10",
-                                                    src=images[9],
+                                                    src='./assets/artwork9.png',
                                                     style={
                                                         'max-width': '100%',
                                                         'max-height': '100%'
@@ -209,66 +454,133 @@ app.layout = html.Div(
                                     ]
                                 ),
                                 html.Div(
-                                    className="list-col",
+                                    className="list-col3",
                                     children=[
+                                        html.H2(children="TITLE"),
                                         html.Div(
                                             className="song-name-container",
                                             children=[
-                                                html.P("1")
+                                                html.P(top_songs['trackName'][0])
                                             ]
                                         ),
                                         html.Div(
                                             className="song-name-container",
                                             children=[
-                                                html.P("2")
+                                                html.P(top_songs['trackName'][1])
                                             ]
                                         ),
                                         html.Div(
                                             className="song-name-container",
                                             children=[
-                                                html.P("3")
+                                                html.P(top_songs['trackName'][2])
                                             ]
                                         ),
                                         html.Div(
                                             className="song-name-container",
                                             children=[
-                                                html.P("4")
+                                                html.P(top_songs['trackName'][3])
                                             ]
                                         ),
                                         html.Div(
                                             className="song-name-container",
                                             children=[
-                                                html.P("5")
+                                                html.P(top_songs['trackName'][4])
                                             ]
                                         ),
                                         html.Div(
                                             className="song-name-container",
                                             children=[
-                                                html.P("6")
+                                                html.P(top_songs['trackName'][5])
                                             ]
                                         ),
                                         html.Div(
                                             className="song-name-container",
                                             children=[
-                                                html.P("7")
+                                                html.P(top_songs['trackName'][6])
                                             ]
                                         ),
                                         html.Div(
                                             className="song-name-container",
                                             children=[
-                                                html.P("8")
+                                                html.P(top_songs['trackName'][7])
                                             ]
                                         ),
                                         html.Div(
                                             className="song-name-container",
                                             children=[
-                                                html.P("9")
+                                                html.P(top_songs['trackName'][8])
                                             ]
                                         ),
                                         html.Div(
                                             className="song-name-container",
                                             children=[
-                                                html.P("10")
+                                                html.P(top_songs['trackName'][9])
+                                            ]
+                                        )
+                                    ]
+                                ),
+                                html.Div(
+                                    className="list-col4",
+                                    children=[
+                                        html.H2(children="PLAYTIME"),
+                                        html.Div(
+                                            className="song-playtime-container",
+                                            children=[
+                                                html.P(top_songs['total_ms_played'][0])
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-playtime-container",
+                                            children=[
+                                                html.P(top_songs['total_ms_played'][1])
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-playtime-container",
+                                            children=[
+                                                html.P(top_songs['total_ms_played'][2])
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-playtime-container",
+                                            children=[
+                                                html.P(top_songs['total_ms_played'][3])
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-playtime-container",
+                                            children=[
+                                                html.P(top_songs['total_ms_played'][4])
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-playtime-container",
+                                            children=[
+                                                html.P(top_songs['total_ms_played'][5])
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-playtime-container",
+                                            children=[
+                                                html.P(top_songs['total_ms_played'][6])
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-playtime-container",
+                                            children=[
+                                                html.P(top_songs['total_ms_played'][7])
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-playtime-container",
+                                            children=[
+                                                html.P(top_songs['total_ms_played'][8])
+                                            ]
+                                        ),
+                                        html.Div(
+                                            className="song-playtime-container",
+                                            children=[
+                                                html.P(top_songs['total_ms_played'][9])
                                             ]
                                         )
                                     ]
@@ -281,10 +593,24 @@ app.layout = html.Div(
                     id="column3",
                     children=[
                         html.Div(
-                            id="day-container"
+                            id="day-container",
+                            children=[
+                                html.H1(children="DAY BREAKDOWN"),
+                                dcc.Graph(
+                                    id="day-plot",
+                                    figure=day_data_plot
+                                )
+                            ]
                         ),
                         html.Div(
-                            id="time-container"
+                            id="time-container",
+                            children=[
+                                html.H1(children="TIME BREAKDOWN"),
+                                dcc.Graph(
+                                    id="time-plot",
+                                    figure=time_data_plot
+                                )
+                            ]
                         )
                     ]
                 )
