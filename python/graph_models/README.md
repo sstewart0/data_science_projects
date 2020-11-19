@@ -1,1 +1,2 @@
-![Image of input](ba_input.png)
+![Image of input](ba_model_input.png)
+![Image of network](ba_network.png)
