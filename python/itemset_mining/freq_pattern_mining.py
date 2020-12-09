@@ -3,6 +3,7 @@ import numpy as np
 from mlxtend.frequent_patterns import apriori, fpgrowth
 from mlxtend.preprocessing import TransactionEncoder
 from itertools import chain, permutations
+import timeit
 
 # apriori & fpgrowth take a (pandas) binary transaction table, i.e.
 #
@@ -14,19 +15,19 @@ from itertools import chain, permutations
 # We can create this using the libraries built in TransactionEncoder function
 
 # Data for Q1 (apriori & fpgrowth)
-transaction_data = [['A', 'B', 'C', 'D'],
+"""transaction_data = [['A', 'B', 'C', 'D'],
                     ['A', 'C', 'D', 'F'],
                     ['A', 'C', 'D', 'E', 'G'],
                     ['A', 'B', 'D', 'F'],
                     ['B', 'C', 'G'],
                     ['D', 'F', 'G'],
                     ['A', 'B', 'G'],
-                    ['C', 'D', 'F', 'G']]
+                    ['C', 'D', 'F', 'G']]"""
 
 # Create the pandas dataframe as described above
-te = TransactionEncoder()
-binary_data = te.fit(transaction_data).transform(transaction_data)
-pandas_df = pd.DataFrame(binary_data, columns=te.columns_)
+#te = TransactionEncoder()
+#binary_data = te.fit(transaction_data).transform(transaction_data)
+#pandas_df = pd.DataFrame(binary_data, columns=te.columns_)
 
 # Data for Q4: association rules
 transaction_data2 = [['A', 'C', 'D'],
@@ -36,6 +37,14 @@ transaction_data2 = [['A', 'C', 'D'],
                      ['A', 'B', 'C', 'E'],
                      ['A', 'B', 'C', 'D']]
 
+def transaction_data(data):
+    transactions = data['Transaction'].unique()
+    return [[y for y in data.loc[data['Transaction'] == x]['Item']] for x in transactions]
+
+def binary_transactions(data):
+    te = TransactionEncoder()
+    binary_data = te.fit(data).transform(data)
+    return pd.DataFrame(binary_data, columns=te.columns_)
 
 # Re-write itertools.combinations function to return list of list of strings not list of tuples of strings
 def combinations(iterable, r):
@@ -105,29 +114,29 @@ relational_data = {
 }
 pd_rd_data = pd.DataFrame(data=relational_data)
 
-
-# A naive method
-"""def freq_pattern_rd(data):
-    valid_tuples = {}
-    cols = list(data.columns)
-    patterns = [[col]+(list(set(data[col]))) for col in cols]
-    for i in range(len(patterns)):
-        for j in range(len(patterns)-i-1):
-            Q1 = np.array(patterns[i][1:])
-            Q2 = np.array(patterns[i+j+1][1:])
-            while (len(Q1)>0) and (len(Q2)>0):
-    return 0"""
-
 # Apply apriori & fpgrowth to the pandas dataframe
 def main():
-    # Q1:
+    data = pd.read_csv('bread_basket.csv')
+    #print(data['Item'].unique())
+    transactions = transaction_data(data)
+    bin_tran = binary_transactions(transactions)
+    print("Apriori  with min_support = 0.1: \n")
+    print(apriori(bin_tran,min_support=0.1,use_colnames=True))
+    print("FPGrowth with min_support = 0.1: \n")
+
+    print(fpgrowth(bin_tran, min_support=0.1, use_colnames=True))
+    print("Association rules in the form: [Antecedent, Target, Confidence]")
+
+    print(association_rules(['Bread','Coffee','Tea'], transactions, 0.01))
+
+    """# Q1:
     print("Apriori  with min_support = 3/8: \n")
     print(apriori(pandas_df, min_support=3/8, use_colnames=True))
     print("FPGrowth with min_support = 2/8: \n")
     print(fpgrowth(pandas_df, min_support=2/8, use_colnames=True))
     # Q4:
     print("Association rules in the form: [Antecedent, Target, Confidence]")
-    print(association_rules(['A', 'B', 'C'], transaction_data2, 0))
+    print(association_rules(['A', 'B', 'C'], transaction_data2, 0))"""
 
 
 if __name__ == "__main__":
